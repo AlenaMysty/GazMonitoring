@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📦 Проект ГазМониторинг · Единый дашборд</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+:root{
+  --primary:#1e3a8a;--primary-light:#3b82f6;--primary-dark:#1e293b;
+  --accent:#f59e0b;--red:#dc2626;--green:#10b981;--purple:#8b5cf6;
+  --bg:#f1f5f9;--card:#fff;--text:#1e293b;--muted:#64748b;--border:#e2e8f0;
+  --shadow:0 1px 3px rgba(0,0,0,0.08);--shadow-lg:0 10px 25px rgba(0,0,0,0.1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.5;font-size:14px;min-height:100vh;display:flex;flex-direction:column}
+
+/* Header */
+.header{background:linear-gradient(135deg,var(--primary) 0%,var(--primary-dark) 100%);color:#fff;padding:25px 40px;box-shadow:var(--shadow-lg);position:relative;overflow:hidden}
+.header::before{content:'';position:absolute;top:-50%;right:-10%;width:400px;height:400px;background:radial-gradient(circle,rgba(245,158,11,.15) 0%,transparent 70%);border-radius:50%}
+.header-content{max-width:1400px;margin:0 auto;position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:20px}
+.header-left h1{font-size:1.6rem;margin-bottom:5px;display:flex;align-items:center;gap:10px}
+.header-left h1 i{color:var(--accent)}
+.header-left p{opacity:.85;font-size:.95rem}
+.header-meta{display:flex;gap:20px;flex-wrap:wrap;font-size:.85rem;opacity:.9}
+.header-meta span{display:flex;align-items:center;gap:6px}
+
+/* Breadcrumbs */
+.breadcrumbs{background:#fff;border-bottom:1px solid var(--border);padding:12px 40px;display:flex;align-items:center;gap:10px;font-size:.88rem;flex-wrap:wrap}
+.breadcrumbs a{color:var(--primary);text-decoration:none;cursor:pointer}
+.breadcrumbs a:hover{text-decoration:underline}
+.breadcrumbs .sep{color:var(--muted)}
+.breadcrumbs .current{color:var(--text);font-weight:600}
+
+/* Main container */
+.main{flex:1;max-width:1400px;width:100%;margin:0 auto;padding:30px 40px}
+
+/* Dashboard view */
+.dashboard-intro{margin-bottom:30px}
+.dashboard-intro h2{font-size:1.4rem;color:var(--primary-dark);margin-bottom:10px;display:flex;align-items:center;gap:10px}
+.dashboard-intro h2 i{color:var(--primary-light)}
+.dashboard-intro p{color:var(--muted);font-size:.95rem;max-width:900px}
+
+/* Cards grid */
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:20px;margin-bottom:30px}
+.doc-card{background:var(--card);border-radius:12px;padding:25px;box-shadow:var(--shadow);cursor:pointer;transition:all .25s;border:2px solid transparent;position:relative;overflow:hidden}
+.doc-card:hover{transform:translateY(-4px);box-shadow:var(--shadow-lg);border-color:var(--primary-light)}
+.doc-card .card-number{position:absolute;top:15px;right:15px;width:32px;height:32px;background:var(--bg);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:var(--primary);font-size:.9rem}
+.doc-card .card-icon{width:56px;height:56px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.5rem;margin-bottom:15px}
+.doc-card h3{font-size:1.1rem;color:var(--primary-dark);margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.doc-card .card-desc{color:var(--muted);font-size:.88rem;line-height:1.5;margin-bottom:15px;min-height:60px}
+.doc-card .card-meta{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:15px}
+.doc-card .card-meta .badge{display:inline-block;padding:3px 9px;border-radius:10px;font-size:.72rem;font-weight:600;background:#eff6ff;color:var(--primary)}
+.doc-card .card-action{display:flex;align-items:center;gap:6px;color:var(--primary);font-weight:600;font-size:.88rem}
+.doc-card .card-action i{transition:transform .2s}
+.doc-card:hover .card-action i{transform:translateX(4px)}
+
+/* Viewer view */
+.viewer{display:none;flex-direction:column;flex:1}
+.viewer.active{display:flex}
+.viewer-toolbar{background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px 20px;margin-bottom:15px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;box-shadow:var(--shadow)}
+.viewer-title{display:flex;align-items:center;gap:12px;font-size:1rem;font-weight:600;color:var(--primary-dark)}
+.viewer-title .icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1rem}
+.viewer-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{padding:7px 14px;border:none;border-radius:6px;font-size:.85rem;font-weight:600;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px;text-decoration:none}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--primary-dark)}
+.btn-secondary{background:#fff;color:var(--primary);border:1px solid var(--border)}
+.btn-secondary:hover{background:var(--bg);border-color:var(--primary)}
+.btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border)}
+.btn-ghost:hover{background:var(--bg);color:var(--text)}
+
+/* Iframe */
+.viewer-frame-wrapper{flex:1;background:#fff;border:1px solid var(--border);border-radius:10px;overflow:hidden;box-shadow:var(--shadow);position:relative;min-height:700px}
+.viewer-frame-wrapper iframe{width:100%;height:100%;min-height:700px;border:none;display:block}
+.viewer-frame-wrapper.fullscreen{position:fixed;top:0;left:0;right:0;bottom:0;z-index:1000;border-radius:0;border:none}
+.viewer-frame-wrapper.fullscreen iframe{min-height:100vh}
+
+/* Loading */
+.loading{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:var(--muted)}
+.loading i{font-size:2rem;color:var(--primary-light);margin-bottom:10px;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Footer */
+.footer{background:#fff;border-top:1px solid var(--border);padding:20px 40px;text-align:center;color:var(--muted);font-size:.85rem}
+
+/* Responsive */
+@media(max-width:768px){
+  .header{padding:20px}
+  .main{padding:20px}
+  .breadcrumbs{padding:10px 20px}
+  .cards-grid{grid-template-columns:1fr}
+  .viewer-toolbar{flex-direction:column;align-items:stretch}
+  .viewer-actions{justify-content:flex-start}
+}
+
+@media print{
+  .viewer-toolbar,.breadcrumbs,.footer{display:none}
+  .main{padding:0}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-content">
+    <div class="header-left">
+      <h1><i class="fa-solid fa-fire-flame-curved"></i> Проект «ГазМониторинг»</h1>
+      <p>Модуль приоритизации внештатных ситуаций · Единый дашборд документации</p>
+    </div>
+    <div class="header-meta">
+      <span><i class="fa-solid fa-calendar"></i> 13 октября 2026 г.</span>
+      <span><i class="fa-solid fa-file-lines"></i> 6 документов</span>
+      <span><i class="fa-solid fa-code-branch"></i> Версия 2.0</span>
+    </div>
+  </div>
+</header>
+
+<!-- BREADCRUMBS -->
+<nav class="breadcrumbs" id="breadcrumbs">
+  <a onclick="showDashboard()"><i class="fa-solid fa-house"></i> Дашборд проекта</a>
+</nav>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- DASHBOARD VIEW -->
+  <div id="dashboard-view">
+    <div class="dashboard-intro">
+      <h2><i class="fa-solid fa-compass"></i> Навигация по документации</h2>
+      <p>Документы расположены в порядке логической демонстрации заказчику: от бизнес-целей к техническим деталям. Нажмите на карточку, чтобы открыть документ. Каждый документ можно также открыть в новой вкладке для детального изучения.</p>
+    </div>
+
+    <div class="cards-grid">
+
+      <!-- 1. BRD -->
+      <div class="doc-card" onclick="openDocument('BRD_ГазМониторинг.html', this)">
+        <div class="card-number">1</div>
+        <div class="card-icon" style="background:linear-gradient(135deg,#3b82f6,#1e40af)"><i class="fa-solid fa-file-contract"></i></div>
+        <h3>BRD · Бизнес-требования</h3>
+        <p class="card-desc">Фундамент проекта. Описывает бизнес-проблему, цели, границы, 10 бизнес-требований (BR-01...BR-10), 4 уровня приоритета и 12 критериев приёмки.</p>
+        <div class="card-meta">
+          <span class="badge">📋 19 разделов</span>
+          <span class="badge">🎯 BR-01...BR-10</span>
+          <span class="badge">✅ 12 критериев</span>
+        </div>
+        <div class="card-action">Открыть документ <i class="fa-solid fa-arrow-right"></i></div>
+      </div>
+
+      <!-- 2. ТЗ -->
+      <div class="doc-card" onclick="openDocument('ТЗ_ГазМониторинг.html', this)">
+        <div class="card-number">2</div>
+        <div class="card-icon" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9)"><i class="fa-solid fa-file-lines"></i></div>
+        <h3>ТЗ · Техническое задание</h3>
+        <p class="card-desc">Как мы будем реализовывать BRD. Архитектура, функциональные требования, стек технологий, этапы, риски и финансовые расчёты.</p>
+        <div class="card-meta">
+          <span class="badge">🏗️ 10 разделов</span>
+          <span class="badge">💰 Финансы</span>
+          <span class="badge">⚠️ Риски</span>
+        </div>
+        <div class="card-action">Открыть документ <i class="fa-solid fa-arrow-right"></i></div>
+      </div>
+
+      <!-- 3. Макет -->
+      <div class="doc-card" onclick="openDocument('GasMonitoring_v3.html', this)">
+        <div class="card-number">3</div>
+        <div class="card-icon" style="background:linear-gradient(135deg,#f59e0b,#d97706)"><i class="fa-solid fa-desktop"></i></div>
+        <h3>🖥️ Интерактивный макет</h3>
+        <p class="card-desc">Работающий прототип интерфейса. Дашборд диспетчера, карточки ситуаций, справочник правил, журнал аудита. <strong>Кликабельный!</strong></p>
+        <div class="card-meta">
+          <span class="badge">🎨 HTML+CSS+JS</span>
+          <span class="badge">🖱️ Интерактивный</span>
+          <span class="badge">🔥 MVP</span>
+        </div>
+        <div class="card-action">Открыть макет <i class="fa-solid fa-arrow-right"></i></div>
+      </div>
+
+      <!-- 4. TechStack -->
+      <div class="doc-card" onclick="openDocument('TechStack.html', this)">
+        <div class="card-number">4</div>
+        <div class="card-icon" style="background:linear-gradient(135deg,#10b981,#047857)"><i class="fa-solid fa-microchip"></i></div>
+        <h3>Технологический стек</h3>
+        <p class="card-desc">На чём делаем проект. Адаптирован под Windows Server, air-gapped среду и интеграцию с SFInspector. Два варианта бюджета.</p>
+        <div class="card-meta">
+          <span class="badge">🪟 Windows</span>
+          <span class="badge">⚡ .NET 8</span>
+          <span class="badge">🟢 Vue.js</span>
+        </div>
+        <div class="card-action">Открыть документ <i class="fa-solid fa-arrow-right"></i></div>
+      </div>
+
+      <!-- 5. Gantt Team -->
+      <div class="doc-card" onclick="openDocument('Gantt_Team.html', this)">
+        <div class="card-number">5</div>
+        <div class="card-icon" style="background:linear-gradient(135deg,#f97316,#c2410c)"><i class="fa-solid fa-users"></i></div>
+        <h3>👥 План по команде</h3>
+        <p class="card-desc">Диаграмма Ганта по ролям: РП/СА, Full-stack, QA, DevOps, UX. Загрузка по неделям, критический путь, узкие места.</p>
+        <div class="card-meta">
+          <span class="badge">👥 4 человека</span>
+          <span class="badge">📅 18 недель</span>
+          <span class="badge">💼 6.6 млн ₽</span>
+        </div>
+        <div class="card-action">Открыть документ <i class="fa-solid fa-arrow-right"></i></div>
+      </div>
+
+      <!-- 6. Gantt Features -->
+      <div class="doc-card" onclick="openDocument('Gantt_Features.html', this)">
+        <div class="card-number">6</div>
+        <div class="card-icon" style="background:linear-gradient(135deg,#06b6d4,#0e7490)"><i class="fa-solid fa-list-check"></i></div>
+        <h3>📊 План по фичам</h3>
+        <p class="card-desc">Детальная декомпозиция 18 фич (F1...F18). Зависимости, критический путь, 6 ключевых вех проекта.</p>
+        <div class="card-meta">
+          <span class="badge">🎯 18 фич</span>
+          <span class="badge">🔴 Крит. путь</span>
+          <span class="badge">🏁 6 вех</span>
+        </div>
+        <div class="card-action">Открыть документ <i class="fa-solid fa-arrow-right"></i></div>
+      </div>
+
+    </div>
+
+    <!-- Сценарий демонстрации -->
+    <div style="background:#fff;border-radius:12px;padding:25px;box-shadow:var(--shadow);margin-top:20px">
+      <h2 style="font-size:1.2rem;color:var(--primary-dark);margin-bottom:15px;display:flex;align-items:center;gap:10px">
+        <i class="fa-solid fa-presentation-screen" style="color:var(--primary-light)"></i>
+        Рекомендуемый сценарий демонстрации заказчику
+      </h2>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:15px">
+        <div style="padding:15px;background:#eff6ff;border-radius:8px;border-left:4px solid var(--primary-light)">
+          <strong style="color:var(--primary-dark)">5 мин · Проблема</strong>
+          <p style="font-size:.85rem;color:var(--muted);margin-top:5px">Откройте <strong>BRD</strong>, разделы 2 и 3. Покажите бизнес-боль и цели.</p>
+        </div>
+        <div style="padding:15px;background:#f5f3ff;border-radius:8px;border-left:4px solid var(--purple)">
+          <strong style="color:var(--primary-dark)">10 мин · Решение</strong>
+          <p style="font-size:.85rem;color:var(--muted);margin-top:5px">Откройте <strong>Макет</strong>. Пройдитесь по дашборду, карточке ситуации, журналу.</p>
+        </div>
+        <div style="padding:15px;background:#ecfdf5;border-radius:8px;border-left:4px solid var(--green)">
+          <strong style="color:var(--primary-dark)">5 мин · Техника</strong>
+          <p style="font-size:.85rem;color:var(--muted);margin-top:5px">Откройте <strong>Техстек</strong>. Покажите, что всё под Windows, есть интеграция с SFInspector.</p>
+        </div>
+        <div style="padding:15px;background:#fff7ed;border-radius:8px;border-left:4px solid var(--accent)">
+          <strong style="color:var(--primary-dark)">10 мин · План и деньги</strong>
+          <p style="font-size:.85rem;color:var(--muted);margin-top:5px">Откройте <strong>ТЗ</strong> (раздел 10) и <strong>План по команде</strong>. Покажите сроки и бюджет.</p>
+        </div>
+        <div style="padding:15px;background:#f0f9ff;border-radius:8px;border-left:4px solid #06b6d4">
+          <strong style="color:var(--primary-dark)">5 мин · Детали</strong>
+          <p style="font-size:.85rem;color:var(--muted);margin-top:5px">Откройте <strong>План по фичам</strong>. Покажите MVP на 10-й неделе.</p>
+        </div>
+        <div style="padding:15px;background:#fef2f2;border-radius:8px;border-left:4px solid var(--red)">
+          <strong style="color:var(--primary-dark)">5 мин · Решение</strong>
+          <p style="font-size:.85rem;color:var(--muted);margin-top:5px">Задайте открытые вопросы из BRD. Зафиксируйте следующие шаги.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEWER VIEW -->
+  <div class="viewer" id="viewer-view">
+    <div class="viewer-toolbar">
+      <div class="viewer-title">
+        <div class="icon" id="viewer-icon" style="background:var(--primary)"><i class="fa-solid fa-file"></i></div>
+        <span id="viewer-name">Документ</span>
+      </div>
+      <div class="viewer-actions">
+        <button class="btn btn-ghost" onclick="showDashboard()"><i class="fa-solid fa-arrow-left"></i> К списку</button>
+        <button class="btn btn-secondary" onclick="openInNewTab()"><i class="fa-solid fa-up-right-from-square"></i> В новой вкладке</button>
+        <button class="btn btn-secondary" onclick="toggleFullscreen()"><i class="fa-solid fa-expand"></i> Полный экран</button>
+        <button class="btn btn-primary" onclick="prevDocument()"><i class="fa-solid fa-chevron-left"></i> Пред.</button>
+        <button class="btn btn-primary" onclick="nextDocument()">След. <i class="fa-solid fa-chevron-right"></i></button>
+      </div>
+    </div>
+    <div class="viewer-frame-wrapper" id="frame-wrapper">
+      <div class="loading" id="loading">
+        <i class="fa-solid fa-spinner"></i>
+        <p>Загрузка документа...</p>
+      </div>
+      <iframe id="doc-frame" title="Документ"></iframe>
+    </div>
+  </div>
+
+</main>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <p><strong>Проект «ГазМониторинг»</strong> · Модуль приоритизации внештатных ситуаций · 13 октября 2026 г.</p>
+  <p style="margin-top:5px;font-size:.8rem">Все документы в одной папке · Навигация через единый дашборд</p>
+</footer>
+
+<script>
+// Список документов в порядке демонстрации
+const documents = [
+  {file: 'BRD_ГазМониторинг.html', name: 'BRD · Бизнес-требования', icon: 'fa-file-contract', color: '#3b82f6'},
+  {file: 'ТЗ_ГазМониторинг.html', name: 'ТЗ · Техническое задание', icon: 'fa-file-lines', color: '#8b5cf6'},
+  {file: 'GasMonitoring_v3.html', name: 'Интерактивный макет', icon: 'fa-desktop', color: '#f59e0b'},
+  {file: 'TechStack.html', name: 'Технологический стек', icon: 'fa-microchip', color: '#10b981'},
+  {file: 'Gantt_Team.html', name: 'План по команде', icon: 'fa-users', color: '#f97316'},
+  {file: 'Gantt_Features.html', name: 'План по фичам', icon: 'fa-list-check', color: '#06b6d4'}
+];
+
+let currentDocIndex = -1;
+
+function openDocument(file, cardElement) {
+  const doc = documents.find(d => d.file === file);
+  if (!doc) return;
+  
+  currentDocIndex = documents.indexOf(doc);
+  
+  // Обновляем viewer
+  document.getElementById('viewer-name').textContent = doc.name;
+  const icon = document.getElementById('viewer-icon');
+  icon.style.background = doc.color;
+  icon.innerHTML = '<i class="fa-solid ' + doc.icon + '"></i>';
+  
+  // Обновляем breadcrumbs
+  document.getElementById('breadcrumbs').innerHTML = `
+    <a onclick="showDashboard()"><i class="fa-solid fa-house"></i> Дашборд</a>
+    <span class="sep">/</span>
+    <span class="current">${doc.name}</span>
+    <span class="sep" style="margin-left:auto;color:var(--muted);font-size:.8rem">${currentDocIndex + 1} из ${documents.length}</span>
+  `;
+  
+  // Показываем viewer, скрываем dashboard
+  document.getElementById('dashboard-view').style.display = 'none';
+  document.getElementById('viewer-view').classList.add('active');
+  
+  // Загружаем документ в iframe
+  const frame = document.getElementById('doc-frame');
+  const loading = document.getElementById('loading');
+  loading.style.display = 'block';
+  frame.src = file;
+  frame.onload = () => { loading.style.display = 'none'; };
+  
+  // Скроллим наверх
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function showDashboard() {
+  document.getElementById('dashboard-view').style.display = 'block';
+  document.getElementById('viewer-view').classList.remove('active');
+  document.getElementById('breadcrumbs').innerHTML = `
+    <a onclick="showDashboard()"><i class="fa-solid fa-house"></i> Дашборд проекта</a>
+  `;
+  // Останавливаем загрузку iframe
+  document.getElementById('doc-frame').src = '';
+  currentDocIndex = -1;
+  window.scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function openInNewTab() {
+  if (currentDocIndex >= 0) {
+    window.open(documents[currentDocIndex].file, '_blank');
+  }
+}
+
+function toggleFullscreen() {
+  const wrapper = document.getElementById('frame-wrapper');
+  wrapper.classList.toggle('fullscreen');
+}
+
+function prevDocument() {
+  if (currentDocIndex > 0) {
+    openDocument(documents[currentDocIndex - 1].file);
+  } else if (currentDocIndex === 0) {
+    openDocument(documents[documents.length - 1].file);
+  }
+}
+
+function nextDocument() {
+  if (currentDocIndex < documents.length - 1) {
+    openDocument(documents[currentDocIndex + 1].file);
+  } else if (currentDocIndex === documents.length - 1) {
+    openDocument(documents[0].file);
+  }
+}
+
+// Клавиши стрелок для навигации
+document.addEventListener('keydown', function(e) {
+  if (currentDocIndex >= 0) {
+    if (e.key === 'ArrowLeft') prevDocument();
+    if (e.key === 'ArrowRight') nextDocument();
+    if (e.key === 'Escape') showDashboard();
+  }
+});
+</script>
+
+</body>
+</html>
