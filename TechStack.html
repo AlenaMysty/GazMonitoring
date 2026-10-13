@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Тех. стек v2.0 | Windows + SFInspector</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+:root{--primary:#1e3a8a;--primary-light:#3b82f6;--primary-dark:#1e293b;--accent:#f59e0b;--red:#dc2626;--green:#10b981;--purple:#8b5cf6;--gray:#64748b;--bg:#f8fafc;--card:#fff;--text:#1e293b;--muted:#64748b;--border:#e2e8f0;--shadow:0 1px 3px rgba(0,0,0,0.08)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;font-size:16px}
+.progress-bar{position:fixed;top:0;left:0;height:4px;background:linear-gradient(90deg,var(--primary-light),var(--accent));width:0%;z-index:1000;transition:width .1s}
+.header{background:linear-gradient(135deg,var(--primary) 0%,var(--primary-dark) 100%);color:#fff;padding:50px 40px 70px;position:relative;overflow:hidden}
+.header::before{content:'';position:absolute;top:-50%;right:-10%;width:500px;height:500px;background:radial-gradient(circle,rgba(245,158,11,.15) 0%,transparent 70%);border-radius:50%}
+.header-content{max-width:1200px;margin:0 auto;position:relative;z-index:1}
+.header-badge{display:inline-block;background:rgba(255,255,255,.15);padding:6px 14px;border-radius:20px;font-size:.85rem;margin-bottom:15px;border:1px solid rgba(255,255,255,.2)}
+.header h1{font-size:2.3rem;font-weight:700;margin-bottom:10px;line-height:1.2}
+.header p{font-size:1.1rem;opacity:.9;max-width:800px}
+.header-meta{display:flex;flex-wrap:wrap;gap:25px;margin-top:25px;padding-top:25px;border-top:1px solid rgba(255,255,255,.2)}
+.meta-item{display:flex;align-items:center;gap:8px;font-size:.92rem}
+.meta-item i{opacity:.8}
+.container{max-width:1200px;margin:-40px auto 0;padding:0 40px 60px;display:grid;grid-template-columns:260px 1fr;gap:30px;position:relative;z-index:2}
+.sidebar{position:sticky;top:20px;height:fit-content;background:var(--card);border-radius:12px;padding:15px;box-shadow:var(--shadow);max-height:calc(100vh - 40px);overflow-y:auto;font-size:.88rem}
+.sidebar h3{font-size:.75rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px;padding-left:8px}
+.sidebar a{display:block;padding:8px 10px;color:var(--text);text-decoration:none;border-radius:6px;margin-bottom:2px;transition:all .2s;border-left:3px solid transparent}
+.sidebar a:hover{background:var(--bg);color:var(--primary)}
+.sidebar a.active{background:#eff6ff;color:var(--primary);border-left-color:var(--primary-light);font-weight:600}
+.sidebar a i{margin-right:6px;width:14px;text-align:center;opacity:.7}
+.content{min-width:0}
+.section{background:var(--card);border-radius:12px;padding:30px;margin-bottom:20px;box-shadow:var(--shadow);scroll-margin-top:20px}
+.section-header{display:flex;align-items:center;gap:15px;margin-bottom:20px;padding-bottom:12px;border-bottom:2px solid var(--bg)}
+.section-icon{width:44px;height:44px;background:linear-gradient(135deg,var(--primary-light),var(--primary));border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.2rem;flex-shrink:0}
+.section h2{font-size:1.4rem;color:var(--primary-dark);font-weight:700}
+.section h3{font-size:1.1rem;color:var(--primary-dark);margin:20px 0 10px;font-weight:600}
+.section p{margin-bottom:10px}
+.table-wrapper{overflow-x:auto;margin:12px 0;border-radius:8px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:.92rem}
+th{background:var(--primary-dark);color:#fff;padding:10px 12px;text-align:left;font-weight:600;font-size:.82rem;text-transform:uppercase;letter-spacing:.5px}
+td{padding:10px 12px;border-bottom:1px solid var(--border)}
+tr:last-child td{border-bottom:none}
+tr:nth-child(even){background:#f8fafc}
+tr:hover{background:#eff6ff}
+.badge{display:inline-block;padding:3px 9px;border-radius:12px;font-size:.78rem;font-weight:600;white-space:nowrap}
+.badge-primary{background:#dbeafe;color:#1e40af}
+.badge-success{background:#d1fae5;color:#065f46}
+.badge-warning{background:#fef3c7;color:#92400e}
+.badge-danger{background:#fee2e2;color:#991b1b}
+.badge-purple{background:#ede9fe;color:#5b21b6}
+.badge-gray{background:#e2e8f0;color:#475569}
+.req-list{list-style:none;margin:12px 0}
+.req-list li{padding:10px 12px 10px 40px;background:#f8fafc;border-left:3px solid var(--primary-light);margin-bottom:6px;border-radius:0 6px 6px 0;position:relative;font-size:.95rem}
+.req-list li::before{content:'✓';position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--green);font-weight:bold;font-size:1.1rem}
+.req-list li strong{color:var(--primary-dark)}
+.callout{padding:12px 16px;border-radius:8px;margin:12px 0;border-left:4px solid;display:flex;gap:10px;align-items:flex-start;font-size:.95rem}
+.callout i{font-size:1.1rem;margin-top:2px}
+.callout.info{background:#eff6ff;border-color:var(--primary-light);color:#1e3a8a}
+.callout.warning{background:#fef3c7;border-color:var(--accent);color:#78350f}
+.callout.success{background:#d1fae5;border-color:var(--green);color:#064e3b}
+.callout.danger{background:#fee2e2;border-color:var(--red);color:#7f1d1d}
+.callout.gray{background:#f1f5f9;border-color:var(--gray);color:#334155}
+.stack-card{background:#fff;border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:12px;display:grid;grid-template-columns:80px 1fr auto;gap:15px;align-items:center}
+.stack-logo{width:60px;height:60px;background:linear-gradient(135deg,var(--primary-light),var(--primary));border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.8rem}
+.stack-content h4{color:var(--primary-dark);margin-bottom:4px;font-size:1.05rem}
+.stack-content p{color:var(--muted);font-size:.9rem;margin:0}
+.stack-meta{display:flex;gap:6px;flex-wrap:wrap}
+.arch-diagram{background:linear-gradient(135deg,#f1f5f9 0%,#ffffff 100%);border:2px dashed var(--border);border-radius:12px;padding:25px;margin:15px 0;font-family:'Courier New',monospace;font-size:.82rem;line-height:1.7;overflow-x:auto;white-space:pre;color:var(--primary-dark)}
+.integration-option{background:#fff;border:2px solid var(--border);border-radius:10px;padding:18px;margin-bottom:15px;position:relative}
+.integration-option.recommended{border-color:var(--green);background:#f0fdf4}
+.integration-option h4{color:var(--primary-dark);margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.integration-option .badge-ribbon{position:absolute;top:-10px;right:15px;background:var(--green);color:#fff;padding:3px 10px;border-radius:10px;font-size:.75rem;font-weight:700}
+.btn-group{display:flex;gap:10px;flex-wrap:wrap;margin:20px 0}
+.btn{padding:9px 18px;border:none;border-radius:8px;font-size:.92rem;font-weight:600;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:8px;text-decoration:none}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--primary-dark);transform:translateY(-1px)}
+.btn-secondary{background:#fff;color:var(--primary);border:2px solid var(--primary)}
+.btn-secondary:hover{background:var(--primary);color:#fff}
+.footer{text-align:center;padding:25px;color:var(--muted);font-size:.85rem;border-top:1px solid var(--border);margin-top:30px}
+@media(max-width:1024px){.container{grid-template-columns:1fr;padding:0 20px 40px}.sidebar{position:static;max-height:none}.header h1{font-size:1.8rem}.section{padding:22px}}
+@media(max-width:640px){.header{padding:30px 20px 50px}.header h1{font-size:1.4rem}.section{padding:18px}.stack-card{grid-template-columns:1fr}}
+@media print{.sidebar,.btn-group,.progress-bar{display:none!important}.container{grid-template-columns:1fr;margin-top:0}.section{box-shadow:none;border:1px solid #ddd;page-break-inside:avoid}.header{background:#fff;color:#000;padding:20px}body{font-size:11pt}}
+</style>
+</head>
+<body>
+<div class="progress-bar" id="progressBar"></div>
+
+<header class="header">
+<div class="header-content">
+<span class="header-badge"><i class="fa-solid fa-microchip"></i> Технологический стек · Версия 2.0 · Обновление</span>
+<h1>Стек под Windows + интеграция с SFInspector</h1>
+<p>Пересмотренная архитектура с учётом: Windows Server, внутренняя сеть без интернета, необходимость интеграции с существующей БД SFInspector.</p>
+<div class="header-meta">
+<div class="meta-item"><i class="fa-solid fa-calendar"></i><span>13 октября 2026 г.</span></div>
+<div class="meta-item"><i class="fa-brands fa-windows"></i><span>ОС: Windows Server</span></div>
+<div class="meta-item"><i class="fa-solid fa-network-wired"></i><span>Сеть: внутренняя, без интернета</span></div>
+<div class="meta-item"><i class="fa-solid fa-database"></i><span>БД: SFInspector (уточняется)</span></div>
+</div>
+</div>
+</header>
+
+<div class="container">
+<aside class="sidebar">
+<h3>Содержание</h3>
+<a href="#changes"><i class="fa-solid fa-arrows-rotate"></i>1. Что изменилось</a>
+<a href="#sfinspector"><i class="fa-solid fa-magnifying-glass"></i>2. Анализ SFInspector</a>
+<a href="#integration"><i class="fa-solid fa-plug"></i>3. Варианты интеграции</a>
+<a href="#stack"><i class="fa-solid fa-cubes"></i>4. Новый стек (Windows)</a>
+<a href="#airgap"><i class="fa-solid fa-tower-broadcast"></i>5. Air-gapped развёртывание</a>
+<a href="#architecture"><i class="fa-solid fa-diagram-project"></i>6. Архитектура</a>
+<a href="#risks"><i class="fa-solid fa-triangle-exclamation"></i>7. Риски</a>
+<a href="#questions"><i class="fa-solid fa-circle-question"></i>8. Вопросы заказчику</a>
+<a href="#actions"><i class="fa-solid fa-list-check"></i>9. План действий</a>
+</aside>
+
+<main class="content">
+
+<section class="section" id="changes">
+<div class="section-header"><div class="section-icon"><i class="fa-solid fa-arrows-rotate"></i></div><h2>1. Ключевые изменения в ограничениях</h2></div>
+
+<h3>Ограничения проекта</h3>
+<div class="table-wrapper"><table>
+<tr><th>Ограничение</th><th>Влияние на стек</th></tr>
+<tr><td><strong>Windows Server</strong></td><td>Предпочтение .NET / C# как нативному стеку. Python/Node.js возможны, но сложнее в поддержке</td></tr>
+<tr><td><strong>Внутренняя сеть без интернета</strong></td><td>Все зависимости должны поставляться офлайн. Нельзя использовать облачные сервисы (S3, SMTP внешних провайдеров)</td></tr>
+<tr><td><strong>Есть SFInspector с БД</strong></td><td>Нужна интеграция: прямое чтение БД, API или файловый обмен. Нельзя дублировать данные без необходимости</td></tr>
+<tr><td><strong>Корпоративная среда</strong></td><td>Требования ИБ, антивирусы, групповые политики. Нужно согласование с IT-отделом</td></tr>
+</table></div>
+</section>
+
+<section class="section" id="sfinspector">
+<div class="section-header"><div class="section-icon"><i class="fa-solid fa-magnifying-glass"></i></div><h2>2. Анализ SFInspector</h2></div>
+
+<div class="callout warning"><i class="fa-solid fa-circle-exclamation"></i><div>
+<strong>Важно:</strong> SFInspector — специализированное ПО для инспекции газового оборудования. Точной публичной документации по его архитектуре нет. <strong>Информацию нужно получить у заказчика или поставщика ПО.</strong>
+</div></div>
+
+<h3>Что нужно выяснить о SFInspector</h3>
+<div class="table-wrapper"><table>
+<tr><th>Вопрос</th><th>Почему это важно</th><th>Как узнать</th></tr>
+<tr><td><strong>На какой СУБД работает?</strong></td><td>Определяет, можем ли мы подключиться напрямую</td><td>Запрос к IT-отделу или поставщику</td></tr>
+<tr><td><strong>Есть ли API?</strong> (REST / SOAP / COM / WCF)</td><td>Определяет способ интеграции</td><td>Документация или техподдержка</td></tr>
+<tr><td><strong>Есть ли схема БД?</strong></td><td>Нужна для написания запросов</td><td>Запрос к разработчику SFInspector</td></tr>
+<tr><td><strong>Какая версия?</strong></td><td>Старые версии могут не иметь нужных интерфейсов</td><td>У администратора системы</td></tr>
+<tr><td><strong>Кто разработчик?</strong></td><td>Можно ли получить консультацию</td><td>У заказчика</td></tr>
+<tr><td><strong>Есть ли тестовая среда?</strong></td><td>Нужна для безопасной разработки интеграции</td><td>У IT-отдела</td></tr>
+</table></div>
+
+<h3>Возможные варианты СУБД у SFInspector</h3>
+<div class="callout info"><i class="fa-solid fa-database"></i><div>
+<strong>Наиболее вероятные варианты</strong> (типично для российского ПО в этой области):
+<ul style="margin:8px 0 0 20px">
+<li><strong>MS SQL Server</strong> — самый частый выбор для Windows-ориентированных систем</li>
+<li><strong>PostgreSQL</strong> — всё чаще встречается в новых версиях</li>
+<li><strong>Oracle</strong> — реже, но возможно в крупных инсталляциях</li>
+<li><strong>SQLite / Firebird</strong> — для небольших инсталляций</li>
+</ul>
+</div></div>
+</section>
+
+<section class="section" id="integration">
+<div class="section-header"><div class="section-icon"><i class="fa-solid fa-plug"></i></div><h2>3. Варианты интеграции с SFInspector</h2></div>
+
+<p>Выбор варианта зависит от того, что доступно в SFInspector. Расположены от предпочтительного к запасному.</p>
+
+<div class="integration-option recommended">
+<div class="badge-ribbon">РЕКОМЕНДУЕТСЯ</div>
+<h4><i class="fa-solid fa-plug" style="color:var(--green)"></i> Вариант А: API SFInspector (если есть)</h4>
+<p><strong>Суть:</strong> SFInspector предоставляет REST/SOAP API для получения данных о внештатных ситуациях.</p>
+<ul class="req-list">
+<li>Наш модуль запрашивает данные через API по расписанию или по событию</li>
+<li>Нет прямого доступа к БД — безопасно, не нарушаем работу SFInspector</li>
+<li>Поставщик SFInspector гарантирует стабильность интерфейса</li>
+<li>Легко поддерживать при обновлениях SFInspector</li>
+</ul>
+<p><strong>Когда применим:</strong> если в SFInspector есть API и он документирован.</p>
+</div>
+
+<div class="integration-option">
+<h4><i class="fa-solid fa-database" style="color:var(--primary)"></i> Вариант Б: Прямое чтение БД SFInspector</h4>
+<p><strong>Суть:</strong> Наш модуль подключается к БД SFInspector и читает нужные таблицы напрямую (read-only).</p>
+<ul class="req-list">
+<li>Создаём отдельного пользователя БД с правами <strong>только на чтение</strong></li>
+<li>Пишем SQL-запросы к нужным таблицам</li>
+<li>Данные копируем в свою БД для анализа</li>
+<li>Не нагружаем SFInspector — только чтение</li>
+</ul>
+<p><strong>Когда применим:</strong> если API нет, но есть доступ к схеме БД и разрешение от владельца SFInspector.</p>
+<div class="callout warning"><i class="fa-solid fa-triangle-exclamation"></i><div>
+<strong>Риск:</strong> При обновлении SFInspector структура БД может измениться. Нужен договорённость с поставщиком о уведомлениях.
+</div></div>
+</div>
+
+<div class="integration-option">
+<h4><i class="fa-solid fa-file-excel" style="color:var(--accent)"></i> Вариант В: Файловый обмен (Excel/CSV)</h4>
+<p><strong>Суть:</strong> SFInspector экспортирует данные в Excel/CSV, наш модуль их читает (как в исходном BRD).</p>
+<ul class="req-list">
+<li>Самый простой и безопасный вариант</li>
+<li>Не требует интеграции с БД или API</li>
+<li>Работает с любой версией SFInspector</li>
+<li>Легко тестировать и отлаживать</li>
+</ul>
+<p><strong>Когда применим:</strong> если API и прямой доступ к БД невозможны. Это <strong>резервный вариант</strong>, с которого можно начать пилот.</p>
+</div>
+
+<div class="integration-option">
+<h4><i class="fa-solid fa-folder-tree" style="color:var(--gray)"></i> Вариант Г: Общая папка (watch-folder)</h4>
+<p><strong>Суть:</strong> SFInspector автоматически складывает файлы в общую папку, наш модуль её мониторит и забирает новые файлы.</p>
+<ul class="req-list">
+<li>Полуавтоматический режим — без участия диспетчера</li>
+<li>Не требует API или прямого доступа к БД</li>
+<li>Нужна настройка прав на папку в Windows</li>
+</ul>
+<p><strong>Когда применим:</strong> если SFInspector умеет автосохранение в папку.</p>
+</div>
+
+<div class="callout success"><i class="fa-solid fa-lightbulb"></i><div>
+<strong>Рекомендация:</strong> Начать пилот с <strong>Варианта В (файловый обмен)</strong> — это быстро и безопасно. Параллельно запросить у поставщика SFInspector информацию об API (Вариант А). Если API есть — перейти на него в этапе 5 BRD.
+</div></div>
+</section>
+
+<section class="section" id="stack">
+<div class="section-header"><div class="section-icon"><i class="fa-solid fa-cubes"></i></div><h2>4. Рекомендуемый стек под Windows</h2></div>
+
+<h3>4.1. Основной стек (.NET-ориентированный)</h3>
+<div class="stack-card">
+<div class="stack-logo" style="background:linear-gradient(135deg,#512bd4,#512bd4)"><i class="fa-brands fa-microsoft"></i></div>
+<div class="stack-content">
+<h4>Backend: .NET 8 (C#) + ASP.NET Core</h4>
+<p>Нативный стек для Windows. Отличная поддержка MS SQL, интеграции с Active Directory, работы в корпоративной среде. Высокая производительность.</p>
+</div>
+<div class="stack-meta">
+<span class="badge badge-success">Нативно для Windows</span>
+<span class="badge badge-primary">Open Source</span>
+</div>
+</div>
+
+<div class="stack-card">
+<div class="stack-logo" style="background:linear-gradient(135deg,#42b883,#35495e)"><i class="fa-brands fa-vuejs"></i></div>
+<div class="stack-content">
+<h4>Frontend: Vue.js 3 + Vuetify 3</h4>
+<p>Собирается один раз на машине разработчика, раздаётся как статические файлы. Не требует Node.js на сервере.</p>
+</div>
+<div class="stack-meta">
+<span class="badge badge-primary">Open Source</span>
+<span class="badge badge-success">Офлайн-развёртывание</span>
+</div>
+</div>
+
+<div class="stack-card">
+<div class="stack-logo" style="background:linear-gradient(135deg,#cc342d,#ffffff);color:#cc342d"><i class="fa-solid fa-database"></i></div>
+<div class="stack-content">
+<h4>База данных: MS SQL Server 2022 (или та, что у SFInspector)</h4>
+<p>Если SFInspector работает на MS SQL — используем тот же экземпляр (отдельная БД). Если на другой СУБД — выбираем ту же для упрощения поддержки.</p>
+</div>
+<div class="stack-meta">
+<span class="badge badge-warning">Требует лицензии</span>
+<span class="badge badge-success">Реестр РФ</span>
+</div>
+</div>
+
+<h3>4.2. Альтернативный стек (если команда на Python)</h3>
+<div class="callout info"><i class="fa-brands fa-python"></i><div>
+<strong>Если в организации уже есть Python-команда</strong>, можно использовать:
+<ul style="margin:8px 0 0 20px">
+<li>Backend: Python 3.11 + FastAPI</li>
+<li>Развёртывание: IIS + HttpPlatformHandler (для Windows)</li>
+<li>БД: та же, что у SFInspector</li>
+</ul>
+<strong>Минусы:</strong> менее нативно для Windows, сложнее с корпоративной поддержкой.
+</div></div>
+
+<h3>4.3. Сводная таблица стека</h3>
+<div class="table-wrapper"><table>
+<tr><th>Слой</th><th>Основной вариант</th><th>Альтернатива</th></tr>
+<tr><td><strong>ОС сервера</strong></td><td>Windows Server 2019/2022</td><td>—</td></tr>
+<tr><td><strong>Backend</strong></td><td>.NET 8 + ASP.NET Core</td><td>Python 3.11 + FastAPI</td></tr>
+<tr><td><strong>Frontend</strong></td><td>Vue.js 3 + Vuetify 3</td><td>Blazor (если всё на .NET)</td></tr>
+<tr><td><strong>База данных</strong></td><td>MS SQL Server 2022</td><td>Та же, что у SFInspector</td></tr>
+<tr><td><strong>Web-сервер</strong></td><td>IIS 10+</td><td>Kestrel (встроенный в .NET)</td></tr>
+<tr><td><strong>Парсинг Excel</strong></td><td>ClosedXML / EPPlus</td><td>pandas + openpyxl (Python)</td></tr>
+<tr><td><strong>Интеграция с SFInspector</strong></td><td>REST API / прямое чтение БД</td><td>Файловый обмен</td></tr>
+<tr><td><strong>Аутентификация</strong></td><td>Windows Authentication (AD)</td><td>JWT + локальная БД пользователей</td></tr>
+<tr><td><strong>Логирование</strong></td><td>Serilog + файл / БД</td><td>NLog</td></tr>
+<tr><td><strong>Планировщик задач</strong></td><td>Hangfire</td><td>Windows Task Scheduler</td></tr>
+</table></div>
+</section>
+
+<section class="section" id="airgap">
+<div class="section-header"><div class="section-icon"><i class="fa-solid fa-tower-broadcast"></i></div><h2>5. Развёртывание в air-gapped среде</h2></div>
+
+<div class="callout danger"><i class="fa-solid fa-ban"></i><div>
+<strong>Ключевое ограничение:</strong> На сервере нет интернета. Это значит:
+<ul style="margin:8px 0 0 20px">
+<li>Нельзя использовать <code>nuget install</code>, <code>npm install</code>, <code>pip install</code> на сервере</li>
+<li>Нельзя тянуть обновления из облака</li>
+<li>Все зависимости должны поставляться в комплекте</li>
+</ul>
+</div></div>
+
+<h3>5.1. Стратегия поставки</h3>
+<ul class="req-list">
+<li><strong>Self-contained deployment (.NET):</strong> приложение собирается вместе со всеми зависимостями и runtime. На сервере не нужен .NET SDK</li>
+<li><strong>Локальный NuGet-репозиторий:</strong> все пакеты заранее скачиваются на машине разработчика и передаются на сервер</li>
+<li><strong>Frontend как статика:</strong> Vue.js собирается один раз, на сервер передаются только <code>.js</code>, <code>.css</code>, <code>.html</code></li>
+<li><strong>Установочные пакеты:</strong> MS SQL, IIS, .NET Runtime — передаются через корпоративный репозиторий или на носителях</li>
+</ul>
+
+<h3>5.2. Обновления</h3>
+<ul class="req-list">
+<li>Обновления приложения — через корпоративный канал (WSUS, SCCM или ручная передача)</li>
+<li>Обновления ОС — через WSUS (внутренний сервер обновлений Windows)</li>
+<li>Обновления зависимостей — только после тестирования на staging-среде</li>
+</ul>
+
+<h3>5.3. Что нельзя использовать</h3>
+<div class="callout gray"><i class="fa-solid fa-ban"></i><div>
+<strong>Исключаем из стека:</strong>
+<ul style="margin:8px 0 0 20px">
+<li>Docker Hub (нет интернета для pull)</li>
+<li>Облачные SMTP (SendGrid, Mailgun) — только внутренний Exchange</li>
+<li>Облачные хранилища (S3, Azure Blob) — только файловая система или SMB</li>
+<li>Внешние CDN (jsDelivr, unpkg) — все библиотеки локально</li>
+<li>OAuth через Google/GitHub — только AD или локальная аутентификация</li>
+</ul>
+</div></div>
+</section>
+
+<section class="section" id="architecture">
+<div class="section-header"><div class="section-icon"><i class="fa-solid fa-diagram-project"></i></div><h2>6. Архитектура решения</h2></div>
+
+<div class="arch-diagram">
+┌────────────────────────────────────────────────────────────────────────┐
+│                    ВНУТРЕННЯЯ СЕТЬ (без интернета)                     │
+│                                                                        │
+│  ┌──────────────────────────────────────────────────────────────────┐ │
+│  │                    КЛИЕНТСКИЕ КОМПЬЮТЕРЫ                         │ │
+│  │  Браузер (Edge/Chrome) → Диспетчеры, Руководитель, Админ        │ │
+│  └──────────────────────────────────────────────────────────────────┘ │
+│                                │                                       │
+│                                │ HTTP/HTTPS (внутренний)              │
+│                                ▼                                       │
+│  ┌──────────────────────────────────────────────────────────────────┐ │
+│  │              СЕРВЕР ПРИЛОЖЕНИЯ (Windows Server)                  │ │
+│  │  ┌────────────────────────────────────────────────────────────┐ │ │
+│  │  │  IIS 10 + ASP.NET Core (.NET 8)                            │ │ │
+│  │  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐    │ │ │
+│  │  │  │  API модуль  │  │  Модуль      │  │  Модуль      │    │ │ │
+│  │  │  │  (REST)      │  │  парсинга    │  │  интеграции  │    │ │ │
+│  │  │  └──────────────┘  └──────────────┘  └──────────────┘    │ │ │
+│  │  │  ┌──────────────┐  ┌──────────────┐                       │ │ │
+│  │  │  │  Модуль      │  │  Модуль      │                       │ │ │
+│  │  │  │  аудита      │  │  авторизации │                       │ │ │
+│  │  │  └──────────────┘  └──────────────┘                       │ │ │
+│  │  └────────────────────────────────────────────────────────────┘ │ │
+│  │  Статические файлы Vue.js (SPA)                                 │ │
+│  └──────────────────────────────────────────────────────────────────┘ │
+│                                │                                       │
+│                                ▼                                       │
+│  ┌──────────────────────────────────────────────────────────────────┐ │
+│  │              СЕРВЕР БД (Windows Server)                          │ │
+│  │  ┌────────────────────────────────────────────────────────────┐ │ │
+│  │  │  MS SQL Server 2022                                        │ │ │
+│  │  │  ┌──────────────────┐  ┌──────────────────┐               │ │ │
+│  │  │  │  БД SFInspector  │  │  БД нашего       │               │ │ │
+│  │  │  │  (read-only для  │  │  модуля          │               │ │ │
+│  │  │  │  нашего модуля)  │  │  (write)         │               │ │ │
+│  │  │  └──────────────────┘  └──────────────────┘               │ │ │
+│  │  └────────────────────────────────────────────────────────────┘ │ │
+│  └──────────────────────────────────────────────────────────────────┘ │
+│                                ▲                                       │
+│                                │ (опционально)                        │
+│  ┌──────────────────────────────────────────────────────────────────┐ │
+│  │              СЕРВЕР SFInspector                                  │ │
+│  │  (если выделен отдельно; иначе — на том же сервере БД)          │ │
+│  └──────────────────────────────────────────────────────────────────┘ │
+│                                                                        │
+│  ┌──────────────────────────────────────────────────────────────────┐ │
+│  │              ВНУТРЕНННЫЙ SMTP (Exchange / postfix)               │ │
+│  │  Для уведомлений диспетчерам                                     │ │
+│  └──────────────────────────────────────────────────────────────────┘ │
+└────────────────────────────────────────────────────────────────────────┘
+</div>
+
+<h3>Потоки данных</h3>
+<ul class="req-list">
+<li><strong>Вариант А (API):</strong> SFInspector API → наш модуль → наша БД → Vue.js</li>
+<li><strong>Вариант Б (прямое чтение):</strong> БД SFInspector (read-only) → наш модуль → наша БД → Vue.js</li>
+<li><strong>Вариант В (файлы):</strong> Excel из SFInspector → наш модуль (парсинг) → наша БД → Vue.js</li>
+<li><strong>Уведомления:</strong> наш модуль → внутренний SMTP → почта диспетчера</li>
+<li><strong>Аутентификация:</strong> Active Directory (корпоративная) или локальная БД пользователей</li>
+</ul>
+</section>
+
+<section class="section" id="risks">
+<div class="section-header"><div class="section-icon"><i class="fa-solid fa-triangle-exclamation"></i></div><h2>7. Риски новой архитектуры</h2></div>
+
+<div class="table-wrapper"><table>
+<tr><th>Риск</th><th>Влияние</th><th>Мера</th></tr>
+<tr>
+<td><strong>SFInspector не имеет API и не даёт доступ к БД</strong></td>
+<td>Придётся использовать файловый обмен — больше ручных действий</td>
+<td>Начать пилот с файлового обмена; параллельно вести переговоры с поставщиком SFInspector</td>
+</tr>
+<tr>
+<td><strong>Структура БД SFInspector меняется при обновлениях</strong></td>
+<td>Прямое чтение перестаёт работать</td>
+<td>Договор с поставщиком об уведомлениях; абстракция доступа к данным</td>
+</tr>
+<tr>
+<td><strong>Нет интернета на сервере</strong></td>
+<td>Сложнее развёртывание и обновления</td>
+<td>Self-contained deployment; локальный репозиторий зависимостей; WSUS</td>
+</tr>
+<tr>
+<td><strong>Лицензирование MS SQL Server</strong></td>
+<td>Дополнительные затраты</td>
+<td>Проверить, есть ли уже лицензии у организации; возможно, использовать ту же БД, что и SFInspector</td>
+</tr>
+<tr>
+<td><strong>Корпоративные политики ИБ</strong></td>
+<td>Запрет на определённые технологии или порты</td>
+<td>Заранее согласовать стек с ИБ-отделом</td>
+</tr>
+<tr>
+<td><strong>Нехватка .NET-специалистов</strong></td>
+<td>Замедление разработки</td>
+<td>Проверить наличие команды; при необходимости — использовать Python-стек</td>
+</tr>
+</table></div>
+</section>
+
+<section class="section" id="questions">
+<div class="section-header"><div class="section-icon"><i class="fa-solid fa-circle-question"></i></div><h2>8. Вопросы, которые нужно задать заказчику</h2></div>
+
+<div class="callout danger"><i class="fa-solid fa-circle-exclamation"></i><div>
+<strong>Без ответов на эти вопросы невозможно окончательно выбрать стек и начать разработку.</strong>
+</div></div>
+
+<div class="table-wrapper"><table>
+<tr><th style="width:40px">#</th><th>Вопрос</th><th>Кому задать</th></tr>
+<tr><td><strong>1</strong></td><td>На какой СУБД работает SFInspector? (MS SQL / PostgreSQL / другая)</td><td>IT-отдел, администратор SFInspector</td></tr>
+<tr><td><strong>2</strong></td><td>Есть ли у SFInspector API? Какой протокол (REST / SOAP / COM)?</td><td>Поставщик SFInspector, техподдержка</td></tr>
+<tr><td><strong>3</strong></td><td>Есть ли документация на схему БД SFInspector?</td><td>Поставщик SFInspector</td></tr>
+<tr><td><strong>4</strong></td><td>Можно ли создать пользователя БД с правами read-only на БД SFInspector?</td><td>DBA, IT-отдел</td></tr>
+<tr><td><strong>5</strong></td><td>Какая версия Windows Server используется? Есть ли Active Directory?</td><td>IT-отдел</td></tr>
+<tr><td><strong>6</strong></td><td>Есть ли лицензии на MS SQL Server? Или используем ту же БД, что и SFInspector?</td><td>IT-отдел, закупки</td></tr>
+<tr><td><strong>7</strong></td><td>Есть ли внутренний SMTP-сервер для уведомлений?</td><td>IT-отдел</td></tr>
+<tr><td><strong>8</strong></td><td>Какие требования ИБ к новому ПО? Нужна ли сертификация ФСТЭК?</td><td>ИБ-отдел</td></tr>
+<tr><td><strong>9</strong></td><td>Есть ли в организации .NET-разработчики? Или команда на Python/Java?</td><td>Руководитель разработки</td></tr>
+<tr><td><strong>10</strong></td><td>Есть ли тестовая среда SFInspector для разработки интеграции?</td><td>IT-отдел</td></tr>
+<tr><td><strong>11</strong></td><td>Как организован процесс обновлений ПО в компании? (WSUS / SCCM / ручное)</td><td>IT-отдел</td></tr>
+<tr><td><strong>12</strong></td><td>Кто является поставщиком SFInspector? Можно ли получить консультацию?</td><td>Заказчик</td></tr>
+</table></div>
+</section>
+
+<section class="section" id="actions">
+<div class="section-header"><div class="section-icon"><i class="fa-solid fa-list-check"></i></div><h2>9. План действий</h2></div>
+
+<div class="callout warning"><i class="fa-solid fa-clock"></i><div>
+<strong>Следующие 2 недели</strong> — критически важны для определения окончательного стека.
+</div></div>
+
+<h3>Неделя 1: Разведка</h3>
+<ul class="req-list">
+<li><strong>День 1-2:</strong> Задать вопросы 1-4 (о SFInspector) — IT-отделу и поставщику</li>
+<li><strong>День 3-4:</strong> Задать вопросы 5-8 (об инфраструктуре и ИБ) — IT-отделу и ИБ</li>
+<li><strong>День 5:</strong> Задать вопросы 9-12 (о команде и процессе) — руководителю разработки</li>
+</ul>
+
+<h3>Неделя 2: Решение</h3>
+<ul class="req-list">
+<li><strong>День 6-7:</strong> Проанализировать ответы, выбрать вариант интеграции (А / Б / В)</li>
+<li><strong>День 8-9:</strong> Утвердить окончательный стек (с учётом доступной команды)</li>
+<li><strong>День 10:</strong> Подготовить тестовую среду (сервер, БД, доступ к SFInspector)</li>
+</ul>
+
+<h3>Далее — по BRD</h3>
+<ul class="req-list">
+<li>Этап 1 BRD (Обследование) — получить примеры Excel-файлов</li>
+<li>Этап 2 BRD (Согласование) — утвердить критерии классификации</li>
+<li>Этап 3 BRD (Пилот) — реализовать на файловом обмене (Вариант В)</li>
+<li>Этап 5 BRD (Развитие) — перейти на API или прямое чтение БД</li>
+</ul>
+
+<div class="callout success"><i class="fa-solid fa-flag-checkered"></i><div>
+<strong>Итоговая рекомендация:</strong>
+<ol style="margin:8px 0 0 20px">
+<li>Начать с <strong>Варианта В (файловый обмен)</strong> — это быстро и безопасно</li>
+<li>Параллельно выяснить возможности API SFInspector</li>
+<li>Использовать <strong>.NET 8 + Vue.js + MS SQL</strong> как основной стек (если есть команда)</li>
+<li>Развёртывать как <strong>self-contained</strong> приложение на Windows Server + IIS</li>
+<li>Заранее согласовать всё с IT-отделом и ИБ</li>
+</ol>
+</div></div>
+</section>
+
+<div class="btn-group">
+<button class="btn btn-primary" onclick="window.print()"><i class="fa-solid fa-print"></i> Печать / PDF</button>
+<a href="#" class="btn btn-secondary" onclick="window.scrollTo({top:0,behavior:'smooth'});return false;"><i class="fa-solid fa-arrow-up"></i> Наверх</a>
+</div>
+
+</main>
+</div>
+
+<footer class="footer">
+<p>Технологический стек v2.0 · Windows + SFInspector · 13 октября 2026 г.</p>
+<p style="margin-top:5px;font-size:.82rem">Требует уточнения информации о SFInspector у заказчика и поставщика.</p>
+</footer>
+
+<script>
+window.addEventListener('scroll',()=>{const w=document.body.scrollTop||document.documentElement.scrollTop;const h=document.documentElement.scrollHeight-document.documentElement.clientHeight;document.getElementById('progressBar').style.width=(w/h)*100+'%'});
+const sections=document.querySelectorAll('.section');const navLinks=document.querySelectorAll('.sidebar a');
+window.addEventListener('scroll',()=>{let c='';sections.forEach(s=>{if(pageYOffset>=s.offsetTop-100)c=s.getAttribute('id')});navLinks.forEach(l=>{l.classList.remove('active');if(l.getAttribute('href')==='#'+c)l.classList.add('active')})});
+document.querySelectorAll('.sidebar a').forEach(l=>{l.addEventListener('click',function(e){e.preventDefault();const t=document.querySelector(this.getAttribute('href'));if(t)t.scrollIntoView({behavior:'smooth',block:'start'})})});
+</script>
+</body>
+</html>

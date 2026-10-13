@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BRD | Модуль приоритизации внештатных ситуаций</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+:root{--primary:#1e3a8a;--primary-light:#3b82f6;--primary-dark:#1e293b;--accent:#f59e0b;--red:#dc2626;--green:#10b981;--purple:#8b5cf6;--gray:#64748b;--bg:#f8fafc;--card:#fff;--text:#1e293b;--muted:#64748b;--border:#e2e8f0;--shadow:0 1px 3px rgba(0,0,0,0.08)}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.6;font-size:16px}
+.progress-bar{position:fixed;top:0;left:0;height:4px;background:linear-gradient(90deg,var(--primary-light),var(--accent));width:0%;z-index:1000;transition:width .1s}
+.header{background:linear-gradient(135deg,var(--primary) 0%,var(--primary-dark) 100%);color:#fff;padding:50px 40px 70px;position:relative;overflow:hidden}
+.header::before{content:'';position:absolute;top:-50%;right:-10%;width:500px;height:500px;background:radial-gradient(circle,rgba(245,158,11,.15) 0%,transparent 70%);border-radius:50%}
+.header-content{max-width:1200px;margin:0 auto;position:relative;z-index:1}
+.header-badge{display:inline-block;background:rgba(255,255,255,.15);padding:6px 14px;border-radius:20px;font-size:.85rem;margin-bottom:15px;border:1px solid rgba(255,255,255,.2)}
+.header h1{font-size:2.3rem;font-weight:700;margin-bottom:10px;line-height:1.2}
+.header p{font-size:1.1rem;opacity:.9;max-width:800px}
+.header-meta{display:flex;flex-wrap:wrap;gap:25px;margin-top:25px;padding-top:25px;border-top:1px solid rgba(255,255,255,.2)}
+.meta-item{display:flex;align-items:center;gap:8px;font-size:.92rem}
+.meta-item i{opacity:.8}
+.container{max-width:1200px;margin:-40px auto 0;padding:0 40px 60px;display:grid;grid-template-columns:260px 1fr;gap:30px;position:relative;z-index:2}
+.sidebar{position:sticky;top:20px;height:fit-content;background:var(--card);border-radius:12px;padding:15px;box-shadow:var(--shadow);max-height:calc(100vh - 40px);overflow-y:auto;font-size:.88rem}
+.sidebar h3{font-size:.75rem;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:10px;padding-left:8px}
+.sidebar a{display:block;padding:8px 10px;color:var(--text);text-decoration:none;border-radius:6px;margin-bottom:2px;transition:all .2s;border-left:3px solid transparent}
+.sidebar a:hover{background:var(--bg);color:var(--primary)}
+.sidebar a.active{background:#eff6ff;color:var(--primary);border-left-color:var(--primary-light);font-weight:600}
+.sidebar a i{margin-right:6px;width:14px;text-align:center;opacity:.7}
+.content{min-width:0}
+.section{background:var(--card);border-radius:12px;padding:30px;margin-bottom:20px;box-shadow:var(--shadow);scroll-margin-top:20px}
+.section-header{display:flex;align-items:center;gap:15px;margin-bottom:20px;padding-bottom:12px;border-bottom:2px solid var(--bg)}
+.section-icon{width:44px;height:44px;background:linear-gradient(135deg,var(--primary-light),var(--primary));border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.2rem;flex-shrink:0}
+.section h2{font-size:1.4rem;color:var(--primary-dark);font-weight:700}
+.section h3{font-size:1.1rem;color:var(--primary-dark);margin:20px 0 10px;font-weight:600}
+.section p{margin-bottom:10px}
+.table-wrapper{overflow-x:auto;margin:12px 0;border-radius:8px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:.92rem}
+th{background:var(--primary-dark);color:#fff;padding:10px 12px;text-align:left;font-weight:600;font-size:.82rem;text-transform:uppercase;letter-spacing:.5px}
+td{padding:10px 12px;border-bottom:1px solid var(--border)}
+tr:last-child td{border-bottom:none}
+tr:nth-child(even){background:#f8fafc}
+tr:hover{background:#eff6ff}
+.badge{display:inline-block;padding:3px 9px;border-radius:12px;font-size:.78rem;font-weight:600;white-space:nowrap}
+.badge-primary{background:#dbeafe;color:#1e40af}
+.badge-success{background:#d1fae5;color:#065f46}
+.badge-warning{background:#fef3c7;color:#92400e}
+.badge-danger{background:#fee2e2;color:#991b1b}
+.badge-purple{background:#ede9fe;color:#5b21b6}
+.badge-gray{background:#e2e8f0;color:#475569}
+.req-list{list-style:none;margin:12px 0}
+.req-list li{padding:10px 12px 10px 40px;background:#f8fafc;border-left:3px solid var(--primary-light);margin-bottom:6px;border-radius:0 6px 6px 0;position:relative;font-size:.95rem}
+.req-list li::before{content:'✓';position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--green);font-weight:bold;font-size:1.1rem}
+.req-list li strong{color:var(--primary-dark)}
+.callout{padding:12px 16px;border-radius:8px;margin:12px 0;border-left:4px solid;display:flex;gap:10px;align-items:flex-start;font-size:.95rem}
+.callout i{font-size:1.1rem;margin-top:2px}
+.callout.info{background:#eff6ff;border-color:var(--primary-light);color:#1e3a8a}
+.callout.warning{background:#fef3c7;border-color:var(--accent);color:#78350f}
+.callout.success{background:#d1fae5;border-color:var(--green);color:#064e3b}
+.callout.danger{background:#fee2e2;border-color:var(--red);color:#7f1d1d}
+.callout.gray{background:#f1f5f9;border-color:var(--gray);color:#334155}
+.priority-levels{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:15px 0}
+.priority-card{border-radius:10px;padding:18px;border:2px solid}
+.priority-card.red{background:#fef2f2;border-color:#fecaca;color:#7f1d1d}
+.priority-card.yellow{background:#fefce8;border-color:#fde68a;color:#78350f}
+.priority-card.green{background:#f0fdf4;border-color:#bbf7d0;color:#14532d}
+.priority-card.gray{background:#f8fafc;border-color:#cbd5e1;color:#334155}
+.priority-card h4{font-size:1.1rem;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.priority-card p{font-size:.88rem;margin:0;line-height:1.4}
+.br-card{background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px;display:grid;grid-template-columns:auto 1fr;gap:12px;align-items:start}
+.br-id{background:var(--primary);color:#fff;padding:6px 10px;border-radius:6px;font-weight:700;font-size:.85rem;white-space:nowrap}
+.br-content p{margin:0;font-size:.92rem}
+.timeline{position:relative;padding-left:28px;margin:15px 0}
+.timeline::before{content:'';position:absolute;left:8px;top:8px;bottom:8px;width:2px;background:linear-gradient(180deg,var(--primary-light),var(--accent))}
+.timeline-item{position:relative;padding:12px 16px;background:#f8fafc;border-radius:8px;margin-bottom:10px;border-left:3px solid var(--primary-light)}
+.timeline-item::before{content:'';position:absolute;left:-24px;top:16px;width:12px;height:12px;background:#fff;border:3px solid var(--primary-light);border-radius:50%}
+.timeline-item h4{color:var(--primary-dark);margin-bottom:3px;font-size:1rem}
+.timeline-item p{color:var(--muted);font-size:.9rem;margin:0}
+.risk-card{background:#fff;border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:8px;display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center}
+.risk-icon{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:1rem}
+.risk-high{background:var(--red)}
+.risk-medium{background:var(--accent)}
+.risk-low{background:var(--green)}
+.risk-content h5{color:var(--primary-dark);margin-bottom:2px;font-size:.92rem}
+.risk-content p{color:var(--muted);font-size:.85rem;margin:0}
+.btn-group{display:flex;gap:10px;flex-wrap:wrap;margin:20px 0}
+.btn{padding:9px 18px;border:none;border-radius:8px;font-size:.92rem;font-weight:600;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:8px;text-decoration:none}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--primary-dark);transform:translateY(-1px)}
+.btn-secondary{background:#fff;color:var(--primary);border:2px solid var(--primary)}
+.btn-secondary:hover{background:var(--primary);color:#fff}
+.footer{text-align:center;padding:25px;color:var(--muted);font-size:.85rem;border-top:1px solid var(--border);margin-top:30px}
+@media(max-width:1024px){.container{grid-template-columns:1fr;padding:0 20px 40px}.sidebar{position:static;max-height:none}.header h1{font-size:1.8rem}.section{padding:22px}}
+@media(max-width:640px){.header{padding:30px 20px 50px}.header h1{font-size:1.4rem}.section{padding:18px}.br-card,.risk-card{grid-template-columns:1fr}}
+@media print{.sidebar,.btn-group,.progress-bar{display:none!important}.container{grid-template-columns:1fr;margin-top:0}.section{box-shadow:none;border:1px solid #ddd;page-break-inside:avoid}.header{background:#fff;color:#000;padding:20px}body{font-size:11pt}}
+</style>
+</head>
+<body>
+<div class="progress-bar" id="progressBar"></div>
+
+<header class="header">
+<div class="header-content">
+<span class="header-badge"><i class="fa-solid fa-file-contract"></i> BRD · Версия 1.0 · Проект для согласования</span>
+<h1>Модуль приоритизации внештатных ситуаций</h1>
+<p>Обработка Excel-пакетов внештатных ситуаций по газовым счётчикам. Внутреннее веб-приложение для автоматизированной классификации и приоритизации.</p>
+<div class="header-meta">
+<div class="meta-item"><i class="fa-solid fa-calendar"></i><span>13 октября 2026 г.</span></div>
+<div class="meta-item"><i class="fa-solid fa-building"></i><span>Заказчик: обслуживающая организация</span></div>
+<div class="meta-item"><i class="fa-solid fa-globe"></i><span>Россия</span></div>
+<div class="meta-item"><i class="fa-solid fa-code-branch"></i><span>Статус: Проект</span></div>
+</div>
+</div>
+</header>
+
+<div class="container">
+<aside class="sidebar">
+<h3>Содержание</h3>
+<a href="#summary"><i class="fa-solid fa-book-open"></i>1. Резюме</a>
+<a href="#problem"><i class="fa-solid fa-triangle-exclamation"></i>2. Проблема</a>
+<a href="#goals"><i class="fa-solid fa-bullseye"></i>3. Цели</a>
+<a href="#scope"><i class="fa-solid fa-border-all"></i>4. Границы</a>
+<a href="#process"><i class="fa-solid fa-diagram-project"></i>5. Процесс</a>
+<a href="#requirements"><i class="fa-solid fa-list-check"></i>6. Требования</a>
+<a href="#rules"><i class="fa-solid fa-scale-balanced"></i>7. Классификация</a>
+<a href="#data"><i class="fa-solid fa-database"></i>8. Данные</a>
+<a href="#dispatcher"><i class="fa-solid fa-user-gear"></i>9. Диспетчер</a>
+<a href="#non-functional"><i class="fa-solid fa-shield-halved"></i>10. Нефункц.</a>
+<a href="#exceptions"><i class="fa-solid fa-circle-exclamation"></i>11. Исключения</a>
+<a href="#acceptance"><i class="fa-solid fa-check-double"></i>12. Приёмка</a>
+<a href="#risks"><i class="fa-solid fa-shield"></i>13. Риски</a>
+<a href="#stages"><i class="fa-solid fa-stairs"></i>14. Этапы</a>
+<a href="#questions"><i class="fa-solid fa-circle-question"></i>15. Вопросы</a>
+</aside>
+
+<main class="content">
+
+<section class="section" id="summary">
+<div class="section-header"><div class="section-icon"><i class="fa-solid fa-book-open"></i></div><h2>1. Резюме проекта</h2></div>
+<p>Обслуживающая организация уже получает Excel-пакеты с внештатными ситуациями от существующей системы. Модуль принимает пакет, разбирает ситуации, сопоставляет с утверждёнными критериями критичности и показывает диспетчеру перечень в порядке приоритета.</p>
+<div class="callout danger"><i class="fa-solid fa-ban"></i><div><strong>Важно:</strong> Модуль <strong>не формирует</strong> ситуации заново, <strong>не перекрывает газ</strong>, <strong>не подтверждает</strong> аварию и <strong>не назначает</strong> бригаду автоматически.</div></div>
+</section>
+
+<section class="section" id="problem">
+<div class="section-header"><div class="section-icon"><i class="fa-solid fa-triangle-exclamation"></i></div><h2>2. Бизнес-проблема</h2></div>
+<p>Сейчас ситуации поступают в Excel в произвольном порядке. Диспетчер просматривает записи вручную.</p>
+<div class="callout danger"><i class="fa-solid fa-exclamation-triangle"></i><div><strong>Проблемы:</strong>
+<ul style="margin:8px 0 0 20px">
+<li>Важная запись может затеряться среди остальных</li>
+<li>Порядок просмотра зависит от ручных действий</li>
+<li>Сложно обеспечить единообразие критериев между сотрудниками</li>
+<li>Трудно восстановить, кто и когда обработал ситуацию</li>
+<li>Изменения приоритетов сложно проверить задним числом</li>
+</ul></div></div>
+</section>
+
+<section class="section" id="goals">
+<div class="section-header"><div class="section-icon"><i class="fa-solid fa-bullseye"></i></div><h2>3. Цели и результаты</h2></div>
+<h3>3.1. Цели</h3>
+<ul class="req-list">
+<li><strong>Показывать критические ситуации раньше остальных.</strong></li>
+<li><strong>Применять единые, утверждённые заказчиком критерии.</strong></li>
+<li><strong>Отображать все ситуации</strong> из пакета, включая без настроенного правила.</li>
+<li><strong>Сохранять историю</strong> обработки пакетов и действий диспетчера.</li>
+<li><strong>Снизить зависимость</strong> от порядка строк Excel и способа просмотра.</li>
+</ul>
+<h3>3.2. Ожидаемые результаты</h3>
+<ul class="req-list">
+<li>После обработки диспетчер видит ситуации, сгруппированные по уровню.</li>
+<li>Каждую ситуацию можно связать с исходной записью в Excel.</li>
+<li>Понятно, по какому показателю и правилу присвоен уровень.</li>
+<li>Действия диспетчера фиксируются в системе.</li>
+<li>Закрытие уведомления не приводит к потере необработанных ситуаций.</li>
+</ul>
+<div class="callout info"><i class="fa-solid fa-chart-line"></i><div><strong>Показатели успеха</strong> устанавливаются после получения исходных данных и проведения пилота.</div></div>
+</section>
+
+<section class="section" id="scope">
+<div class="section-header"><div class="section-icon"><i class="fa-solid fa-border-all"></i></div><h2>4. Границы проекта</h2></div>
+<h3>4.1. Входит в объём</h3>
+<ul class="req-list">
+<li>Приём и проверка Excel-пакетов</li>
+<li>Извлечение ситуаций и показателей</li>
+<li>Классификация по справочнику заказчика</li>
+<li>Отображение по 4 группам: 🔴 красные, 🟡 жёлтые, 🟢 зелёные, ⚪ не настроенные</li>
+<li>Уведомление диспетчера в приложении</li>
+<li>Просмотр деталей и источника в файле</li>
+<li>Изменение статуса обработки</li>
+<li>Журнал загрузок, результатов и действий</li>
+<li>Администрирование и версионирование критериев</li>
+</ul>
+<h3>4.2. Не входит в базовый объём</h3>
+<div class="callout gray"><i class="fa-solid fa-ban"></i><div><strong>Следующее НЕ входит в текущий этап:</strong>
+<ul style="margin:8px 0 0 20px">
+<li>Самостоятельный опрос газовых счётчиков</li>
+<li>Выявление событий, отсутствующих во входном пакете</li>
+<li>Дистанционное управление счётчиком или запорной арматурой</li>
+<li>Автоматическое перекрытие подачи газа</li>
+<li>Подтверждение утечки только по показателю из Excel</li>
+<li>Автоматическая постановка задачи выездной бригаде</li>
+<li>Изменение алгоритмов существующей системы</li>
+</ul>
+<p style="margin-top:8px">Эти функции могут быть предметом отдельных этапов.</p>
+</div></div>
+</section>
+
+<section class="section" id="process">
+<div class="section-header"><div class="section-icon"><i class="fa-solid fa-diagram-project"></i></div><h2>5. Бизнес-процесс обработки пакета</h2></div>
+<div class="timeline">
+<div class="timeline-item"><h4>Шаг 1</h4><p>Пользователь передаёт Excel-пакет в модуль.</p></div>
+<div class="timeline-item"><h4>Шаг 2</h4><p>Модуль проверяет формат и соответствие согласованному шаблону.</p></div>
+<div class="timeline-item"><h4>Шаг 3</h4><p>Модуль извлекает данные о ситуациях и показателях.</p></div>
+<div class="timeline-item"><h4>Шаг 4</h4><p>Каждая ситуация сопоставляется со справочником критериев.</p></div>
+<div class="timeline-item"><h4>Шаг 5</h4><p>Определяется уровень: 🔴 красный, 🟡 жёлтый, 🟢 зелёный или ⚪ «Уровень не настроен».</p></div>
+<div class="timeline-item"><h4>Шаг 6</h4><p>Система сохраняет сведения о файле, ситуациях и применённых правилах.</p></div>
+<div class="timeline-item"><h4>Шаг 7</h4><p>Диспетчер получает уведомление и открывает список.</p></div>
+<div class="timeline-item"><h4>Шаг 8</h4><p>Список отображается в порядке: красный → жёлтый → зелёный → не настроен.</p></div>
+<div class="timeline-item"><h4>Шаг 9</h4><p>Диспетчер просматривает ситуации и меняет статусы при необходимости.</p></div>
+<div class="timeline-item"><h4>Шаг 10</h4><p>Действия сохраняются в истории.</p></div>
+</div>
+<div class="callout warning"><i class="fa-solid fa-bell"></i><div><strong>Требование к уведомлению:</strong> Всплывающее уведомление не должно быть единственным местом. Если пользователь закрыл его, пакет остаётся в постоянном списке новых или необработанных.</div></div>
+</section>
+
+<section class="section" id="requirements">
+<div class="section-header"><div class="section-icon"><i class="fa-solid fa-list-check"></i></div><h2>6. Бизнес-требования</h2></div>
+<div class="br-card"><div class="br-id">BR-01</div><div class="br-content"><p>Все ситуации из корректного пакета должны быть доступны диспетчеру после обработки.</p></div></div>
+<div class="br-card"><div class="br-id">BR-02</div><div class="br-content"><p>Ситуации отображаются в порядке приоритета, а не в исходном порядке строк Excel.</p></div></div>
+<div class="br-card"><div class="br-id">BR-03</div><div class="br-content"><p>Уровни критичности и условия их назначения утверждаются заказчиком.</p></div></div>
+<div class="br-card"><div class="br-id">BR-04</div><div class="br-content"><p>У ситуации с несколькими показателями применяется <strong>самый высокий уровень</strong>: красный выше жёлтого, жёлтый выше зелёного.</p></div></div>
+<div class="br-card"><div class="br-id">BR-05</div><div class="br-content"><p>Если правило для показателя не найдено, ситуация остаётся видимой и обозначается как «Уровень не настроен».</p></div></div>
+<div class="br-card"><div class="br-id">BR-06</div><div class="br-content"><p>Диспетчер понимает причину присвоенного уровня и может проследить её до источника в Excel.</p></div></div>
+<div class="br-card"><div class="br-id">BR-07</div><div class="br-content"><p>Статус обработки и уровень критичности учитываются отдельно. Изменение статуса не меняет уровень автоматически.</p></div></div>
+<div class="br-card"><div class="br-id">BR-08</div><div class="br-content"><p>Закрытие всплывающего уведомления не удаляет ситуацию и не считает её обработанной.</p></div></div>
+<div class="br-card"><div class="br-id">BR-09</div><div class="br-content"><p>История загрузок, классификаций и действий пользователей доступна уполномоченным сотрудникам.</p></div></div>
+<div class="br-card"><div class="br-id">BR-10</div><div class="br-content"><p>Ошибка в файле или неизвестная структура не приводит к выдаче неполного результата как успешно обработанного.</p></div></div>
+</section>
+
+<section class="section" id="rules">
+<div class="section-header"><div class="section-icon"><i class="fa-solid fa-scale-balanced"></i></div><h2>7. Правила классификации</h2></div>
+<h3>7.1. Уровни приоритета</h3>
+<div class="priority-levels">
+<div class="priority-card red"><h4><i class="fa-solid fa-circle"></i> 🔴 Красный</h4><p>Требует немедленного внимания диспетчера.</p></div>
+<div class="priority-card yellow"><h4><i class="fa-solid fa-circle"></i> 🟡 Жёлтый</h4><p>Рассматривается после красного уровня.</p></div>
+<div class="priority-card green"><h4><i class="fa-solid fa-circle"></i> 🟢 Зелёный</h4><p>Просматривается в обычном режиме; ситуация может оказаться ошибочной.</p></div>
+<div class="priority-card gray"><h4><i class="fa-solid fa-circle"></i> ⚪ Не настроен</h4><p>Не сопоставлена с утверждённым критерием — требует проверки.</p></div>
+</div>
+<h3>7.2. Правила назначения</h3>
+<ul class="req-list">
+<li>Уровень задаётся по справочнику, утверждённому заказчиком.</li>
+<li>Сопоставление выполняется по согласованным полям: коду ситуации, коду показателя, наименованию или значению.</li>
+<li>Если подходят несколько правил, применяется наиболее высокий уровень.</li>
+<li>Если правило не найдено, система <strong>не должна</strong> автоматически присваивать зелёный уровень.</li>
+<li>Если изменилось правило, результат прошлой обработки остаётся воспроизводимым по версии правил, применённой при импорте.</li>
+<li>Исправление классификации после изменения справочника — явное действие, отражается в журнале.</li>
+</ul>
+<div class="callout warning"><i class="fa-solid fa-triangle-exclamation"></i><div><strong>Классификация ≠ подтверждение аварии.</strong> Назначение уровня означает порядок внимания диспетчера. Оно само по себе не подтверждает причину ситуации и не запускает отключение газа или выезд бригады.</div></div>
+</section>
+
+<section class="section" id="data">
+<div class="section-header"><div class="section-icon"><i class="fa-solid fa-database"></i></div><h2>8. Требования к данным и справочникам</h2></div>
+<h3>8.1. Входной Excel-пакет</h3>
+<p>Для анализа нужно зафиксировать по реальным файлам:</p>
+<ul class="req-list">
+<li>Формат и расширение</li>
+<li>Названия и количество листов</li>
+<li>Строки заголовков и обязательные столбцы</li>
+<li>Идентификаторы счётчика, объекта и ситуации</li>
+<li>Поля показателей, значений и единиц измерения</li>
+<li>Формат даты и времени</li>
+<li>Коды и текстовые описания событий</li>
+<li>Возможные варианты шаблона</li>
+<li>Правила обработки пустых, повторных и некорректных значений</li>
+</ul>
+<h3>8.2. Справочник критичности</h3>
+<p>Должен содержать как минимум:</p>
+<ul class="req-list">
+<li>Код или наименование показателя/ситуации</li>
+<li>Условие сопоставления (если уровень зависит от значения)</li>
+<li>Назначенный уровень</li>
+<li>Текстовое пояснение для диспетчера</li>
+<li>Версию и период действия правила</li>
+<li>Признак активности</li>
+<li>Автора и время изменения</li>
+</ul>
+</section>
+
+<section class="section" id="dispatcher">
+<div class="section-header"><div class="section-icon"><i class="fa-solid fa-user-gear"></i></div><h2>9. Требования к работе диспетчера</h2></div>
+<h3>9.1. Основной экран</h3>
+<p>Диспетчер должен видеть:</p>
+<ul class="req-list">
+<li>Количество новых пакетов и ситуаций</li>
+<li>Число записей каждого уровня</li>
+<li>Период данных и имя файла</li>
+<li>Дату и пользователя, выполнившего загрузку</li>
+<li>Список ситуаций по приоритетным разделам</li>
+<li>Статус обработки каждой ситуации</li>
+</ul>
+<h3>9.2. Карточка ситуации</h3>
+<p>При наличии данных в Excel карточка показывает:</p>
+<ul class="req-list">
+<li>Счётчик или внешний идентификатор</li>
+<li>Объект или адрес</li>
+<li>Дату и время ситуации</li>
+<li>Код и описание</li>
+<li>Показатели, значения и единицы измерения</li>
+<li>Присвоенный уровень</li>
+<li>Причину классификации</li>
+<li>Применённое правило</li>
+<li>Лист и строку исходного Excel</li>
+<li>Статус и историю действий диспетчера</li>
+</ul>
+<h3>9.3. Действия диспетчера</h3>
+<ul class="req-list">
+<li>Открыть ситуацию</li>
+<li>Отметить просмотренной</li>
+<li>Принять в работу</li>
+<li>Отметить как ошибочную</li>
+<li>Закрыть ситуацию</li>
+<li>Добавить комментарий (если функция включена в объём)</li>
+</ul>
+</section>
+
+<section class="section" id="non-functional">
+<div class="section-header"><div class="section-icon"><i class="fa-solid fa-shield-halved"></i></div><h2>10. Нефункциональные и организационные требования</h2></div>
+<ul class="req-list">
+<li><strong>Доступ</strong> — только уполномоченным пользователям</li>
+<li><strong>Роли</strong> — права соответствуют ролям</li>
+<li><strong>Журналирование</strong> — загрузка, импорт, изменение правил, действия диспетчера</li>
+<li><strong>Исходный файл</strong> — доступен только в пределах утверждённых прав и сроков хранения</li>
+<li><strong>Сроки хранения</strong> — устанавливает заказчик</li>
+<li><strong>Ошибки</strong> — понятный текст пользователю, технические подробности для сопровождения</li>
+<li><strong>Показатели производительности</strong> — устанавливаются после получения данных о фактическом объёме</li>
+<li><strong>Правовые требования РФ</strong> — проверяются ответственными за ИБ</li>
+</ul>
+</section>
+
+<section class="section" id="exceptions">
+<div class="section-header"><div class="section-icon"><i class="fa-solid fa-circle-exclamation"></i></div><h2>11. Ошибочные и исключительные ситуации</h2></div>
+<div class="table-wrapper"><table>
+<tr><th>Событие</th><th>Ожидаемое поведение</th></tr>
+<tr><td>Файл неподдерживаемого формата</td><td>Отказ в обработке, указание поддерживаемых форматов</td></tr>
+<tr><td>Структура файла изменилась</td><td>Не завершать как успешную; сообщить о нарушении шаблона</td></tr>
+<tr><td>Отсутствуют необходимые поля</td><td>Зафиксировать ошибку, не выдавать неполный перечень как полный</td></tr>
+<tr><td>Показатель не найден в справочнике</td><td>Отобразить в группе «Уровень не настроен»</td></tr>
+<tr><td>В ситуации несколько показателей</td><td>Назначить самый высокий найденный уровень</td></tr>
+<tr><td>В пакете нет ситуаций</td><td>Показать, что пакет обработан, ситуаций не обнаружено</td></tr>
+<tr><td>Пакет загружен повторно</td><td>Предупредить пользователя, применить согласованное правило</td></tr>
+<tr><td>Диспетчер закрыл уведомление</td><td>Оставить пакет и ситуации в очереди</td></tr>
+<tr><td>Ошибка при обработке части строк</td><td>Показать статус и перечень ошибок; не скрывать частично обработанные записи</td></tr>
+</table></div>
+</section>
+
+<section class="section" id="acceptance">
+<div class="section-header"><div class="section-icon"><i class="fa-solid fa-check-double"></i></div><h2>12. Критерии приёмки бизнеса</h2></div>
+<p>Пилот считается соответствующим бизнес-ожиданиям, если на согласованном наборе тестовых пакетов:</p>
+<div class="table-wrapper"><table>
+<tr><th style="width:40px">#</th><th>Критерий</th></tr>
+<tr><td><strong>1</strong></td><td>Все ситуации из корректного файла доступны в результате обработки.</td></tr>
+<tr><td><strong>2</strong></td><td>Ситуации отображаются в порядке: красные, жёлтые, зелёные, не настроенные.</td></tr>
+<tr><td><strong>3</strong></td><td>Положение строки в исходном Excel не влияет на приоритет.</td></tr>
+<tr><td><strong>4</strong></td><td>Для ситуации с несколькими показателями выбирается самый высокий уровень.</td></tr>
+<tr><td><strong>5</strong></td><td>Неизвестные показатели не считаются зелёными автоматически.</td></tr>
+<tr><td><strong>6</strong></td><td>Диспетчер видит причину присвоения уровня.</td></tr>
+<tr><td><strong>7</strong></td><td>Для каждой ситуации можно найти исходную запись в Excel.</td></tr>
+<tr><td><strong>8</strong></td><td>Изменения статусов фиксируются с пользователем и временем.</td></tr>
+<tr><td><strong>9</strong></td><td>Закрытие уведомления не скрывает и не удаляет необработанные ситуации.</td></tr>
+<tr><td><strong>10</strong></td><td>Некорректный файл не отображается как полностью и успешно обработанный.</td></tr>
+<tr><td><strong>11</strong></td><td>Повторная загрузка выявляется и обрабатывается по согласованному правилу.</td></tr>
+<tr><td><strong>12</strong></td><td>Изменения критериев критичности сохраняются и имеют версию.</td></tr>
+</table></div>
+</section>
+
+<section class="section" id="risks">
+<div class="section-header"><div class="section-icon"><i class="fa-solid fa-shield"></i></div><h2>13. Риски и меры</h2></div>
+<div class="risk-card"><div class="risk-icon risk-high"><i class="fa-solid fa-file-excel"></i></div><div class="risk-content"><h5>Формат Excel меняется без предупреждения</h5><p>Ошибка разбора или пропуск ситуаций. <strong>Мера:</strong> зафиксировать шаблоны, проверять структуру, вести версии форматов.</p></div><span class="badge badge-danger">Высокий</span></div>
+<div class="risk-card"><div class="risk-icon risk-high"><i class="fa-solid fa-book"></i></div><div class="risk-content"><h5>Критерии неполные или неоднозначные</h5><p>Некорректное распределение по уровням. <strong>Мера:</strong> назначить владельца справочника и порядок согласования изменений.</p></div><span class="badge badge-danger">Высокий</span></div>
+<div class="risk-card"><div class="risk-icon risk-medium"><i class="fa-solid fa-question"></i></div><div class="risk-content"><h5>Неизвестные показатели трактуются как зелёные</h5><p>Важная ситуация оказывается в обычном списке. <strong>Мера:</strong> выделять несопоставленные записи отдельно.</p></div><span class="badge badge-warning">Средний</span></div>
+<div class="risk-card"><div class="risk-icon risk-medium"><i class="fa-solid fa-bell-slash"></i></div><div class="risk-content"><h5>Диспетчер пропускает всплывающее окно</h5><p>Ситуация остаётся незамеченной. <strong>Мера:</strong> хранить список в постоянной очереди диспетчера.</p></div><span class="badge badge-warning">Средний</span></div>
+<div class="risk-card"><div class="risk-icon risk-medium"><i class="fa-solid fa-clone"></i></div><div class="risk-content"><h5>Файл загружается несколько раз</h5><p>Дубли и путаница. <strong>Мера:</strong> установить правило повторной обработки, вести историю загрузок.</p></div><span class="badge badge-warning">Средний</span></div>
+<div class="risk-card"><div class="risk-icon risk-high"><i class="fa-solid fa-triangle-exclamation"></i></div><div class="risk-content"><h5>Красный уровень принимают за подтверждённую аварию</h5><p>Неверные ожидания и действия. <strong>Мера:</strong> явно описать смысл уровня и регламент реакции отдельно.</p></div><span class="badge badge-danger">Высокий</span></div>
+<div class="risk-card"><div class="risk-icon risk-low"><i class="fa-solid fa-plug"></i></div><div class="risk-content"><h5>Интеграция с действующим ПО недоступна</h5><p>Увеличение ручных действий. <strong>Мера:</strong> запустить пилот с ручной загрузкой, интеграцию оценить отдельно.</p></div><span class="badge badge-success">Низкий</span></div>
+</section>
+
+<section class="section" id="stages">
+<div class="section-header"><div class="section-icon"><i class="fa-solid fa-stairs"></i></div><h2>14. Этапы проекта</h2></div>
+<div class="timeline">
+<div class="timeline-item"><h4>Этап 1. Обследование</h4><p>Получить примеры файлов, описать текущий процесс, проверить возможности действующего ПО, определить владельца критериев.</p></div>
+<div class="timeline-item"><h4>Этап 2. Согласование требований</h4><p>Утвердить поля пакета и правила разбора; согласовать критерии и уровни; определить порядок повторной загрузки и статусы.</p></div>
+<div class="timeline-item"><h4>Этап 3. Пилотная версия</h4><p>Реализовать загрузку файла, проверку шаблона, классификацию и экран диспетчера. Сохранять пакеты, ситуации и действия. Протестировать на примерах.</p></div>
+<div class="timeline-item"><h4>Этап 4. Опытная эксплуатация</h4><p>Проверить работу диспетчеров на реальных пакетах. Выявить несопоставленные показатели. Уточнить критерии и интерфейс.</p></div>
+<div class="timeline-item"><h4>Этап 5. Развитие</h4><p>Автоматизировать передачу Excel-пакетов. Интегрировать модуль с действующим ПО. При отдельном согласовании — внешние уведомления и интеграция с заявками.</p></div>
+</div>
+</section>
+
+<section class="section" id="questions">
+<div class="section-header"><div class="section-icon"><i class="fa-solid fa-circle-question"></i></div><h2>15. Открытые вопросы для согласования</h2></div>
+<div class="table-wrapper"><table>
+<tr><th style="width:40px">#</th><th>Вопрос</th></tr>
+<tr><td><strong>1</strong></td><td>Какие реальные Excel-шаблоны нужно поддерживать?</td></tr>
+<tr><td><strong>2</strong></td><td>Где в пакете находятся признаки внештатной ситуации и критические показатели?</td></tr>
+<tr><td><strong>3</strong></td><td>Есть ли у пакета уникальный идентификатор?</td></tr>
+<tr><td><strong>4</strong></td><td>Кто утверждает и изменяет справочник критичности?</td></tr>
+<tr><td><strong>5</strong></td><td>Могут ли уровни зависеть от диапазона значений показателя?</td></tr>
+<tr><td><strong>6</strong></td><td>Что делать с ситуацией, если часть её показателей распознана, а часть нет?</td></tr>
+<tr><td><strong>7</strong></td><td>Должен ли диспетчер подтверждать каждую красную запись?</td></tr>
+<tr><td><strong>8</strong></td><td>Нужно ли фиксировать комментарий при отметке ситуации ошибочной?</td></tr>
+<tr><td><strong>9</strong></td><td>Как обрабатывать исправленный пакет за тот же период?</td></tr>
+<tr><td><strong>10</strong></td><td>Кто должен получать уведомление о новом пакете?</td></tr>
+<tr><td><strong>11</strong></td><td>Каковы сроки хранения исходных файлов и истории обработки?</td></tr>
+<tr><td><strong>12</strong></td><td>Поддерживает ли действующее ПО API, автоматическую выгрузку или расширение интерфейса?</td></tr>
+<tr><td><strong>13</strong></td><td>Планируется ли на следующих этапах уведомление собственника и обслуживающей компании?</td></tr>
+</table></div>
+
+<div class="callout success" style="margin-top:20px"><i class="fa-solid fa-arrow-right"></i><div><strong>Рекомендуемые следующие действия:</strong>
+<ol style="margin:8px 0 0 20px">
+<li>Заказчику предоставить несколько реальных Excel-пакетов с разными примерами ситуаций.</li>
+<li>Назначить ответственного за утверждение критериев критичности.</li>
+<li>Вместе с диспетчерами согласовать порядок статусов и подтверждения красных ситуаций.</li>
+<li>Проверить возможности действующего ПО и определить вариант поступления файла.</li>
+<li>После обследования обновить BRD и подготовить спецификацию системных требований.</li>
+</ol></div></div>
+</section>
+
+<div class="btn-group">
+<button class="btn btn-primary" onclick="window.print()"><i class="fa-solid fa-print"></i> Печать / Сохранить в PDF</button>
+<a href="#" class="btn btn-secondary" onclick="window.scrollTo({top:0,behavior:'smooth'});return false;"><i class="fa-solid fa-arrow-up"></i> Наверх</a>
+</div>
+
+</main>
+</div>
+
+<footer class="footer">
+<p>BRD · Модуль приоритизации внештатных ситуаций · Версия 1.0 · 13 октября 2026 г.</p>
+<p style="margin-top:5px;font-size:.82rem">Документ подготовлен с использованием ИИ-ассистента. Требует согласования с заказчиком.</p>
+</footer>
+
+<script>
+window.addEventListener('scroll',()=>{const w=document.body.scrollTop||document.documentElement.scrollTop;const h=document.documentElement.scrollHeight-document.documentElement.clientHeight;document.getElementById('progressBar').style.width=(w/h)*100+'%'});
+const sections=document.querySelectorAll('.section');const navLinks=document.querySelectorAll('.sidebar a');
+window.addEventListener('scroll',()=>{let c='';sections.forEach(s=>{if(pageYOffset>=s.offsetTop-100)c=s.getAttribute('id')});navLinks.forEach(l=>{l.classList.remove('active');if(l.getAttribute('href')==='#'+c)l.classList.add('active')})});
+document.querySelectorAll('.sidebar a').forEach(l=>{l.addEventListener('click',function(e){e.preventDefault();const t=document.querySelector(this.getAttribute('href'));if(t)t.scrollIntoView({behavior:'smooth',block:'start'})})});
+</script>
+</body>
+</html>

@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ГазМониторинг | Модуль приоритизации ВНС</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+:root{
+  --primary:#1e3a8a;--primary-light:#3b82f6;--primary-dark:#1e293b;
+  --red:#dc2626;--red-bg:#fef2f2;--red-border:#fecaca;
+  --yellow:#f59e0b;--yellow-bg:#fefce8;--yellow-border:#fde68a;
+  --green:#10b981;--green-bg:#f0fdf4;--green-border:#bbf7d0;
+  --gray:#64748b;--gray-bg:#f8fafc;--gray-border:#cbd5e1;
+  --bg:#f1f5f9;--card:#fff;--text:#1e293b;--muted:#64748b;--border:#e2e8f0;
+  --shadow:0 1px 3px rgba(0,0,0,0.08);--shadow-lg:0 10px 25px rgba(0,0,0,0.1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.5;font-size:14px}
+
+/* Layout */
+.app{display:grid;grid-template-columns:250px 1fr;min-height:100vh}
+
+/* Sidebar */
+.sidebar{background:var(--primary-dark);color:#fff;padding:20px 0;position:sticky;top:0;height:100vh;overflow-y:auto}
+.logo{padding:0 20px 20px;border-bottom:1px solid rgba(255,255,255,0.1);margin-bottom:15px}
+.logo h2{font-size:1.1rem;display:flex;align-items:center;gap:10px}
+.logo h2 i{color:var(--yellow)}
+.logo p{font-size:.75rem;color:#94a3b8;margin-top:4px}
+.nav-section{padding:0 15px;margin-bottom:10px}
+.nav-section h4{font-size:.7rem;text-transform:uppercase;letter-spacing:1px;color:#64748b;padding:10px 10px 5px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;color:#cbd5e1;text-decoration:none;border-radius:6px;margin-bottom:2px;cursor:pointer;transition:all .2s;font-size:.9rem}
+.nav-item:hover{background:rgba(255,255,255,0.05);color:#fff}
+.nav-item.active{background:var(--primary-light);color:#fff;font-weight:600}
+.nav-item i{width:18px;text-align:center}
+.nav-item .counter{margin-left:auto;background:var(--red);color:#fff;padding:1px 7px;border-radius:10px;font-size:.7rem;font-weight:700}
+.user-card{margin:20px 15px 0;padding:12px;background:rgba(255,255,255,0.05);border-radius:8px;display:flex;align-items:center;gap:10px}
+.user-avatar{width:36px;height:36px;background:var(--primary-light);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700}
+.user-info{flex:1;min-width:0}
+.user-info .name{font-size:.85rem;font-weight:600}
+.user-info .role{font-size:.7rem;color:#94a3b8}
+
+/* Main */
+.main{padding:25px 30px;min-width:0}
+.topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:25px;gap:20px;flex-wrap:wrap}
+.topbar h1{font-size:1.5rem;color:var(--primary-dark)}
+.topbar-actions{display:flex;gap:10px;align-items:center}
+.btn{padding:8px 16px;border:none;border-radius:6px;font-size:.88rem;font-weight:600;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px;text-decoration:none}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--primary-dark)}
+.btn-secondary{background:#fff;color:var(--primary);border:1px solid var(--border)}
+.btn-secondary:hover{background:var(--bg)}
+.btn-danger{background:var(--red);color:#fff}
+.btn-warning{background:var(--yellow);color:#fff}
+.btn-success{background:var(--green);color:#fff}
+.btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border)}
+.btn-sm{padding:5px 10px;font-size:.8rem}
+
+/* Stats */
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:15px;margin-bottom:25px}
+.stat-card{background:var(--card);border-radius:10px;padding:18px;box-shadow:var(--shadow);border-left:4px solid var(--primary-light);position:relative;overflow:hidden}
+.stat-card.red{border-left-color:var(--red);background:var(--red-bg)}
+.stat-card.yellow{border-left-color:var(--yellow);background:var(--yellow-bg)}
+.stat-card.green{border-left-color:var(--green);background:var(--green-bg)}
+.stat-card.gray{border-left-color:var(--gray);background:var(--gray-bg)}
+.stat-card h3{font-size:1.8rem;font-weight:700;margin-bottom:3px}
+.stat-card p{color:var(--muted);font-size:.82rem;margin:0}
+.stat-card i{position:absolute;right:15px;top:15px;font-size:1.5rem;opacity:.2}
+
+/* Page sections */
+.page{display:none}
+.page.active{display:block}
+
+/* Section card */
+.section-card{background:var(--card);border-radius:10px;box-shadow:var(--shadow);margin-bottom:20px;overflow:hidden}
+.section-header{padding:15px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.section-header h2{font-size:1.1rem;color:var(--primary-dark);display:flex;align-items:center;gap:10px}
+.section-header h2 i{color:var(--primary-light)}
+.section-body{padding:15px 20px}
+
+/* Priority group */
+.priority-group{margin-bottom:20px}
+.priority-group-header{display:flex;align-items:center;gap:10px;padding:10px 15px;border-radius:8px;margin-bottom:10px;font-weight:600}
+.priority-group-header.red{background:var(--red-bg);color:#7f1d1d;border-left:4px solid var(--red)}
+.priority-group-header.yellow{background:var(--yellow-bg);color:#78350f;border-left:4px solid var(--yellow)}
+.priority-group-header.green{background:var(--green-bg);color:#14532d;border-left:4px solid var(--green)}
+.priority-group-header.gray{background:var(--gray-bg);color:#334155;border-left:4px solid var(--gray)}
+.priority-group-header .count{margin-left:auto;background:rgba(0,0,0,0.08);padding:2px 10px;border-radius:10px;font-size:.8rem}
+
+/* Situation list */
+.situation-item{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px 15px;margin-bottom:8px;display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;cursor:pointer;transition:all .2s}
+.situation-item:hover{border-color:var(--primary-light);box-shadow:var(--shadow)}
+.situation-item.processed{opacity:.6}
+.priority-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.priority-dot.red{background:var(--red)}
+.priority-dot.yellow{background:var(--yellow)}
+.priority-dot.green{background:var(--green)}
+.priority-dot.gray{background:var(--gray)}
+.situation-info{min-width:0}
+.situation-title{font-weight:600;margin-bottom:3px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.situation-meta{font-size:.82rem;color:var(--muted);display:flex;gap:12px;flex-wrap:wrap}
+.situation-meta span{display:flex;align-items:center;gap:4px}
+.situation-actions{display:flex;gap:6px;flex-wrap:wrap}
+
+/* Badges */
+.badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:.72rem;font-weight:600;white-space:nowrap}
+.badge-red{background:var(--red-bg);color:#7f1d1d;border:1px solid var(--red-border)}
+.badge-yellow{background:var(--yellow-bg);color:#78350f;border:1px solid var(--yellow-border)}
+.badge-green{background:var(--green-bg);color:#14532d;border:1px solid var(--green-border)}
+.badge-gray{background:var(--gray-bg);color:#334155;border:1px solid var(--gray-border)}
+.badge-primary{background:#dbeafe;color:#1e40af;border:1px solid #bfdbfe}
+.badge-info{background:#e0f2fe;color:#075985;border:1px solid #bae6fd}
+
+/* Packages list */
+.package-item{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:15px;margin-bottom:10px;display:grid;grid-template-columns:auto 1fr auto;gap:15px;align-items:center}
+.package-icon{width:44px;height:44px;background:#eff6ff;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--primary);font-size:1.2rem}
+.package-info h4{font-size:.95rem;margin-bottom:3px}
+.package-info p{font-size:.8rem;color:var(--muted)}
+.package-stats{display:flex;gap:8px;flex-wrap:wrap}
+
+/* Modal */
+.modal-overlay{display:none;position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:100;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.active{display:flex}
+.modal{background:var(--card);border-radius:12px;max-width:800px;width:100%;max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg)}
+.modal-header{padding:18px 25px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.modal-header h2{font-size:1.2rem;display:flex;align-items:center;gap:10px}
+.modal-close{background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--muted);padding:5px}
+.modal-body{padding:20px 25px}
+.modal-footer{padding:15px 25px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+
+/* Detail grid */
+.detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:20px}
+.detail-item{background:var(--bg);padding:10px 12px;border-radius:6px}
+.detail-item .label{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+.detail-item .value{font-weight:600;font-size:.92rem}
+.detail-item .value.red{color:var(--red)}
+.detail-item .value.yellow{color:var(--yellow)}
+
+.classification-box{background:linear-gradient(135deg,#eff6ff,#f8fafc);border:1px solid var(--border);border-radius:8px;padding:15px;margin-bottom:15px}
+.classification-box h4{font-size:.85rem;color:var(--primary);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.classification-box p{font-size:.88rem;line-height:1.5}
+
+.timeline{border-left:2px solid var(--border);padding-left:15px;margin:10px 0}
+.timeline-item{position:relative;padding:0 0 12px 15px}
+.timeline-item::before{content:'';position:absolute;left:-20px;top:4px;width:10px;height:10px;background:var(--primary-light);border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 2px var(--primary-light)}
+.timeline-item .time{font-size:.75rem;color:var(--muted)}
+.timeline-item .text{font-size:.88rem;margin-top:2px}
+
+/* Table */
+.table-wrapper{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th{background:var(--bg);padding:10px 12px;text-align:left;font-weight:600;color:var(--primary-dark);font-size:.8rem;text-transform:uppercase;letter-spacing:.5px;border-bottom:2px solid var(--border)}
+td{padding:10px 12px;border-bottom:1px solid var(--border)}
+tr:hover{background:var(--bg)}
+
+/* Form */
+.form-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:12px}
+.form-group{display:flex;flex-direction:column;gap:4px}
+.form-group label{font-size:.82rem;font-weight:600;color:var(--primary-dark)}
+.form-group input,.form-group select,.form-group textarea{padding:8px 10px;border:1px solid var(--border);border-radius:6px;font-size:.88rem;font-family:inherit}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:var(--primary-light);box-shadow:0 0 0 3px rgba(59,130,246,0.1)}
+
+/* Callouts */
+.callout{padding:12px 15px;border-radius:8px;margin:12px 0;border-left:4px solid;display:flex;gap:10px;align-items:flex-start;font-size:.88rem}
+.callout.info{background:#eff6ff;border-color:var(--primary-light);color:#1e3a8a}
+.callout.warning{background:var(--yellow-bg);border-color:var(--yellow);color:#78350f}
+.callout.success{background:var(--green-bg);border-color:var(--green);color:#064e3b}
+.callout.danger{background:var(--red-bg);border-color:var(--red);color:#7f1d1d}
+
+/* Upload area */
+.upload-area{border:2px dashed var(--border);border-radius:10px;padding:30px;text-align:center;cursor:pointer;transition:all .2s;background:#fafbfc}
+.upload-area:hover{border-color:var(--primary-light);background:#f0f7ff}
+.upload-area i{font-size:2.5rem;color:var(--primary-light);margin-bottom:10px}
+.upload-area h3{font-size:1rem;margin-bottom:5px}
+.upload-area p{font-size:.82rem;color:var(--muted)}
+
+/* Toast */
+.toast{position:fixed;bottom:20px;right:20px;background:var(--primary-dark);color:#fff;padding:12px 20px;border-radius:8px;box-shadow:var(--shadow-lg);display:flex;align-items:center;gap:10px;z-index:200;transform:translateY(100px);opacity:0;transition:all .3s}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.success{background:var(--green)}
+.toast.warning{background:var(--yellow)}
+.toast.error{background:var(--red)}
+
+/* Responsive */
+@media(max-width:1024px){.app{grid-template-columns:1fr}.sidebar{position:static;height:auto}}
+@media(max-width:640px){.main{padding:15px}.situation-item{grid-template-columns:1fr}.situation-actions{justify-content:flex-start}}
+@media print{.sidebar,.topbar-actions,.situation-actions,.modal-footer{display:none}.app{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="logo">
+      <h2><i class="fa-solid fa-fire-flame-curved"></i> ГазМониторинг</h2>
+      <p>Модуль приоритизации ВНС</p>
+    </div>
+
+    <div class="nav-section">
+      <h4>Рабочее пространство</h4>
+      <a class="nav-item active" onclick="showPage('dashboard',this)"><i class="fa-solid fa-gauge-high"></i> Дашборд <span class="counter" id="counter-red">3</span></a>
+      <a class="nav-item" onclick="showPage('packages',this)"><i class="fa-solid fa-file-excel"></i> Пакеты <span class="counter" style="background:var(--primary-light)">2</span></a>
+      <a class="nav-item" onclick="showPage('situations',this)"><i class="fa-solid fa-list-check"></i> Все ситуации</a>
+      <a class="nav-item" onclick="showPage('upload',this)"><i class="fa-solid fa-upload"></i> Загрузить Excel</a>
+    </div>
+
+    <div class="nav-section">
+      <h4>Администрирование</h4>
+      <a class="nav-item" onclick="showPage('rules',this)"><i class="fa-solid fa-scale-balanced"></i> Справочник правил</a>
+      <a class="nav-item" onclick="showPage('audit',this)"><i class="fa-solid fa-clock-rotate-left"></i> Журнал действий</a>
+    </div>
+
+    <div class="user-card">
+      <div class="user-avatar">ПИ</div>
+      <div class="user-info">
+        <div class="name">Петров И.С.</div>
+        <div class="role">Диспетчер · Смена А</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main class="main">
+
+    <!-- ===== DASHBOARD ===== -->
+    <div class="page active" id="page-dashboard">
+      <div class="topbar">
+        <h1><i class="fa-solid fa-gauge-high" style="color:var(--primary-light)"></i> Панель диспетчера</h1>
+        <div class="topbar-actions">
+          <button class="btn btn-secondary" onclick="showToast('Данные обновлены','success')"><i class="fa-solid fa-rotate"></i> Обновить</button>
+          <button class="btn btn-primary" onclick="showPage('upload',document.querySelector('.nav-item:nth-child(4)'))"><i class="fa-solid fa-upload"></i> Загрузить пакет</button>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-grid">
+        <div class="stat-card red">
+          <i class="fa-solid fa-circle-exclamation"></i>
+          <h3 id="stat-red">3</h3>
+          <p>🔴 Красный · Немедленно</p>
+        </div>
+        <div class="stat-card yellow">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <h3 id="stat-yellow">5</h3>
+          <p>🟡 Жёлтый · После красного</p>
+        </div>
+        <div class="stat-card green">
+          <i class="fa-solid fa-circle-check"></i>
+          <h3 id="stat-green">8</h3>
+          <p>🟢 Зелёный · Обычный режим</p>
+        </div>
+        <div class="stat-card gray">
+          <i class="fa-solid fa-circle-question"></i>
+          <h3 id="stat-gray">2</h3>
+          <p>⚪ Не настроено · Требует проверки</p>
+        </div>
+      </div>
+
+      <!-- Notification about new package -->
+      <div class="callout warning">
+        <i class="fa-solid fa-bell"></i>
+        <div>
+          <strong>Новый пакет обработан:</strong> <code>ВНС_2026-10-13_08-00.xlsx</code> загружен в 08:14. 
+          Обнаружено <strong>18 ситуаций</strong> (3 🔴, 5 🟡, 8 🟢, 2 ⚪). 
+          <a href="#" onclick="showPage('situations',document.querySelectorAll('.nav-item')[2]);return false;" style="color:#78350f;font-weight:600">Перейти к списку →</a>
+        </div>
+      </div>
+
+      <!-- Red priority group -->
+      <div class="priority-group">
+        <div class="priority-group-header red">
+          <i class="fa-solid fa-circle"></i> 🔴 КРАСНЫЙ · Требует немедленного внимания
+          <span class="count">3</span>
+        </div>
+
+        <div class="situation-item" onclick="openSituationModal(1)">
+          <div class="priority-dot red"></div>
+          <div class="situation-info">
+            <div class="situation-title">
+              Расход = 0 м³/ч более 2 часов
+              <span class="badge badge-red">Красный</span>
+              <span class="badge badge-info">Новая</span>
+            </div>
+            <div class="situation-meta">
+              <span><i class="fa-solid fa-location-dot"></i> УУГ-0891 · пр. Мира, 12</span>
+              <span><i class="fa-solid fa-clock"></i> 13.10.2026 06:00</span>
+              <span><i class="fa-solid fa-user"></i> Иванов И.И.</span>
+            </div>
+          </div>
+          <div class="situation-actions">
+            <button class="btn btn-sm btn-primary" onclick="event.stopPropagation();openSituationModal(1)">Открыть</button>
+          </div>
+        </div>
+
+        <div class="situation-item" onclick="openSituationModal(2)">
+          <div class="priority-dot red"></div>
+          <div class="situation-info">
+            <div class="situation-title">
+              Давление ниже критического: 0.15 Па (порог 0.20)
+              <span class="badge badge-red">Красный</span>
+              <span class="badge badge-info">Новая</span>
+            </div>
+            <div class="situation-meta">
+              <span><i class="fa-solid fa-location-dot"></i> УУГ-0334 · ул. Гагарина, 88</span>
+              <span><i class="fa-solid fa-clock"></i> 13.10.2026 07:30</span>
+              <span><i class="fa-solid fa-user"></i> СНТ "Заря"</span>
+            </div>
+          </div>
+          <div class="situation-actions">
+            <button class="btn btn-sm btn-primary" onclick="event.stopPropagation();openSituationModal(2)">Открыть</button>
+          </div>
+        </div>
+
+        <div class="situation-item" onclick="openSituationModal(3)">
+          <div class="priority-dot red"></div>
+          <div class="situation-info">
+            <div class="situation-title">
+              Код НС E101: расход ниже нижнего предела измерения
+              <span class="badge badge-red">Красный</span>
+              <span class="badge badge-primary">В работе</span>
+            </div>
+            <div class="situation-meta">
+              <span><i class="fa-solid fa-location-dot"></i> УУГ-0112 · ул. Советская, 1</span>
+              <span><i class="fa-solid fa-clock"></i> 13.10.2026 05:15</span>
+              <span><i class="fa-solid fa-user"></i> Завод "Металлист"</span>
+            </div>
+          </div>
+          <div class="situation-actions">
+            <button class="btn btn-sm btn-primary" onclick="event.stopPropagation();openSituationModal(3)">Открыть</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Yellow priority group -->
+      <div class="priority-group">
+        <div class="priority-group-header yellow">
+          <i class="fa-solid fa-circle"></i> 🟡 ЖЁЛТЫЙ · Рассматривается после красного
+          <span class="count">5</span>
+        </div>
+
+        <div class="situation-item" onclick="openSituationModal(4)">
+          <div class="priority-dot yellow"></div>
+          <div class="situation-info">
+            <div class="situation-title">
+              Резкий рост расхода: +180% за час
+              <span class="badge badge-yellow">Жёлтый</span>
+              <span class="badge badge-info">Новая</span>
+            </div>
+            <div class="situation-meta">
+              <span><i class="fa-solid fa-location-dot"></i> УУГ-1042 · ул. Ленина, 5</span>
+              <span><i class="fa-solid fa-clock"></i> 13.10.2026 07:00</span>
+            </div>
+          </div>
+          <div class="situation-actions">
+            <button class="btn btn-sm btn-primary" onclick="event.stopPropagation();openSituationModal(4)">Открыть</button>
+          </div>
+        </div>
+
+        <div class="situation-item" onclick="openSituationModal(5)">
+          <div class="priority-dot yellow"></div>
+          <div class="situation-info">
+            <div class="situation-title">
+              Температура газа выше порога: +28°C (порог +25°C)
+              <span class="badge badge-yellow">Жёлтый</span>
+              <span class="badge badge-info">Новая</span>
+            </div>
+            <div class="situation-meta">
+              <span><i class="fa-solid fa-location-dot"></i> УУГ-0567 · пер. Короткий, 3</span>
+              <span><i class="fa-solid fa-clock"></i> 13.10.2026 06:45</span>
+            </div>
+          </div>
+          <div class="situation-actions">
+            <button class="btn btn-sm btn-primary" onclick="event.stopPropagation();openSituationModal(5)">Открыть</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Green priority group -->
+      <div class="priority-group">
+        <div class="priority-group-header green">
+          <i class="fa-solid fa-circle"></i> 🟢 ЗЕЛЁНЫЙ · Обычный режим
+          <span class="count">8</span>
+        </div>
+        <div class="situation-item">
+          <div class="priority-dot green"></div>
+          <div class="situation-info">
+            <div class="situation-title">Код НС W205: кратковременное отклонение давления <span class="badge badge-green">Зелёный</span></div>
+            <div class="situation-meta"><span><i class="fa-solid fa-location-dot"></i> УУГ-0789 · ул. Пушкина, 14</span></div>
+          </div>
+          <div class="situation-actions"><button class="btn btn-sm btn-ghost" onclick="event.stopPropagation();openSituationModal(6)">Открыть</button></div>
+        </div>
+      </div>
+
+      <!-- Gray priority group -->
+      <div class="priority-group">
+        <div class="priority-group-header gray">
+          <i class="fa-solid fa-circle"></i> ⚪ УРОВЕНЬ НЕ НАСТРОЕН · Требует проверки
+          <span class="count">2</span>
+        </div>
+        <div class="situation-item">
+          <div class="priority-dot gray"></div>
+          <div class="situation-info">
+            <div class="situation-title">Код НС X99: неизвестное событие <span class="badge badge-gray">Не настроен</span></div>
+            <div class="situation-meta"><span><i class="fa-solid fa-location-dot"></i> УУГ-0445 · ул. Садовая, 22</span></div>
+          </div>
+          <div class="situation-actions"><button class="btn btn-sm btn-ghost" onclick="openSituationModal(7)">Открыть</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== PACKAGES ===== -->
+    <div class="page" id="page-packages">
+      <div class="topbar">
+        <h1><i class="fa-solid fa-file-excel" style="color:var(--primary-light)"></i> Пакеты Excel</h1>
+        <div class="topbar-actions">
+          <button class="btn btn-primary" onclick="showPage('upload',document.querySelectorAll('.nav-item')[3])"><i class="fa-solid fa-upload"></i> Загрузить новый</button>
+        </div>
+      </div>
+
+      <div class="section-card">
+        <div class="section-header">
+          <h2><i class="fa-solid fa-list"></i> История обработанных пакетов</h2>
+        </div>
+        <div class="section-body">
+          <div class="package-item">
+            <div class="package-icon"><i class="fa-solid fa-file-excel"></i></div>
+            <div class="package-info">
+              <h4>ВНС_2026-10-13_08-00.xlsx <span class="badge badge-primary">Текущий</span></h4>
+              <p>Загружен: Петров И.С. · 13.10.2026 08:14 · Период: 12.10.2026 20:00 — 13.10.2026 08:00</p>
+            </div>
+            <div class="package-stats">
+              <span class="badge badge-red">🔴 3</span>
+              <span class="badge badge-yellow">🟡 5</span>
+              <span class="badge badge-green">🟢 8</span>
+              <span class="badge badge-gray">⚪ 2</span>
+            </div>
+          </div>
+
+          <div class="package-item">
+            <div class="package-icon"><i class="fa-solid fa-file-excel"></i></div>
+            <div class="package-info">
+              <h4>ВНС_2026-10-12_20-00.xlsx</h4>
+              <p>Загружен: Сидоров А.В. · 12.10.2026 20:05 · Период: 12.10.2026 08:00 — 12.10.2026 20:00</p>
+            </div>
+            <div class="package-stats">
+              <span class="badge badge-red">🔴 1</span>
+              <span class="badge badge-yellow">🟡 4</span>
+              <span class="badge badge-green">🟢 12</span>
+              <span class="badge badge-gray">⚪ 0</span>
+            </div>
+          </div>
+
+          <div class="package-item">
+            <div class="package-icon"><i class="fa-solid fa-file-excel"></i></div>
+            <div class="package-info">
+              <h4>ВНС_2026-10-12_08-00.xlsx</h4>
+              <p>Загружен: Петров И.С. · 12.10.2026 08:10 · Период: 11.10.2026 20:00 — 12.10.2026 08:00</p>
+            </div>
+            <div class="package-stats">
+              <span class="badge badge-red">🔴 2</span>
+              <span class="badge badge-yellow">🟡 6</span>
+              <span class="badge badge-green">🟢 9</span>
+              <span class="badge badge-gray">⚪ 1</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== SITUATIONS ===== -->
+    <div class="page" id="page-situations">
+      <div class="topbar">
+        <h1><i class="fa-solid fa-list-check" style="color:var(--primary-light)"></i> Все ситуации</h1>
+        <div class="topbar-actions">
+          <select class="btn btn-secondary" style="padding:7px 10px">
+            <option>Все пакеты</option>
+            <option>ВНС_2026-10-13_08-00.xlsx</option>
+          </select>
+          <select class="btn btn-secondary" style="padding:7px 10px">
+            <option>Все уровни</option>
+            <option>🔴 Красный</option>
+            <option>🟡 Жёлтый</option>
+            <option>🟢 Зелёный</option>
+            <option>⚪ Не настроен</option>
+          </select>
+          <select class="btn btn-secondary" style="padding:7px 10px">
+            <option>Все статусы</option>
+            <option>Новая</option>
+            <option>В работе</option>
+            <option>Закрыта</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="callout info">
+        <i class="fa-solid fa-circle-info"></i>
+        <div>Ситуации отсортированы по приоритету: 🔴 Красный → 🟡 Жёлтый → 🟢 Зелёный → ⚪ Не настроен (BR-02). Порядок строк в исходном Excel не влияет на приоритет.</div>
+      </div>
+
+      <!-- Same groups as dashboard but full list -->
+      <div class="priority-group">
+        <div class="priority-group-header red"><i class="fa-solid fa-circle"></i> 🔴 КРАСНЫЙ <span class="count">3</span></div>
+        <div class="situation-item" onclick="openSituationModal(1)">
+          <div class="priority-dot red"></div>
+          <div class="situation-info">
+            <div class="situation-title">Расход = 0 м³/ч более 2 часов <span class="badge badge-red">Красный</span> <span class="badge badge-info">Новая</span></div>
+            <div class="situation-meta"><span>УУГ-0891 · пр. Мира, 12</span><span>13.10.2026 06:00</span></div>
+          </div>
+          <div class="situation-actions"><button class="btn btn-sm btn-primary">Открыть</button></div>
+        </div>
+        <div class="situation-item" onclick="openSituationModal(2)">
+          <div class="priority-dot red"></div>
+          <div class="situation-info">
+            <div class="situation-title">Давление ниже критического: 0.15 Па <span class="badge badge-red">Красный</span> <span class="badge badge-info">Новая</span></div>
+            <div class="situation-meta"><span>УУГ-0334 · ул. Гагарина, 88</span><span>13.10.2026 07:30</span></div>
+          </div>
+          <div class="situation-actions"><button class="btn btn-sm btn-primary">Открыть</button></div>
+        </div>
+        <div class="situation-item" onclick="openSituationModal(3)">
+          <div class="priority-dot red"></div>
+          <div class="situation-info">
+            <div class="situation-title">Код НС E101: расход ниже нижнего предела <span class="badge badge-red">Красный</span> <span class="badge badge-primary">В работе</span></div>
+            <div class="situation-meta"><span>УУГ-0112 · ул. Советская, 1</span><span>13.10.2026 05:15</span></div>
+          </div>
+          <div class="situation-actions"><button class="btn btn-sm btn-primary">Открыть</button></div>
+        </div>
+      </div>
+
+      <div class="priority-group">
+        <div class="priority-group-header yellow"><i class="fa-solid fa-circle"></i> 🟡 ЖЁЛТЫЙ <span class="count">5</span></div>
+        <div class="situation-item" onclick="openSituationModal(4)">
+          <div class="priority-dot yellow"></div>
+          <div class="situation-info">
+            <div class="situation-title">Резкий рост расхода: +180% за час <span class="badge badge-yellow">Жёлтый</span></div>
+            <div class="situation-meta"><span>УУГ-1042 · ул. Ленина, 5</span></div>
+          </div>
+          <div class="situation-actions"><button class="btn btn-sm btn-primary">Открыть</button></div>
+        </div>
+      </div>
+
+      <div class="priority-group">
+        <div class="priority-group-header green"><i class="fa-solid fa-circle"></i> 🟢 ЗЕЛЁНЫЙ <span class="count">8</span></div>
+        <div class="situation-item"><div class="priority-dot green"></div><div class="situation-info"><div class="situation-title">Код W205: отклонение давления <span class="badge badge-green">Зелёный</span></div><div class="situation-meta"><span>УУГ-0789</span></div></div></div>
+      </div>
+
+      <div class="priority-group">
+        <div class="priority-group-header gray"><i class="fa-solid fa-circle"></i> ⚪ НЕ НАСТРОЕН <span class="count">2</span></div>
+        <div class="situation-item"><div class="priority-dot gray"></div><div class="situation-info"><div class="situation-title">Код X99: неизвестное событие <span class="badge badge-gray">Не настроен</span></div><div class="situation-meta"><span>УУГ-0445</span></div></div></div>
+      </div>
+    </div>
+
+    <!-- ===== UPLOAD ===== -->
+    <div class="page" id="page-upload">
+      <div class="topbar">
+        <h1><i class="fa-solid fa-upload" style="color:var(--primary-light)"></i> Загрузка Excel-пакета</h1>
+      </div>
+
+      <div class="section-card">
+        <div class="section-header"><h2><i class="fa-solid fa-file-excel"></i> Загрузка нового пакета</h2></div>
+        <div class="section-body">
+          <div class="upload-area" onclick="simulateUpload()">
+            <i class="fa-solid fa-cloud-arrow-up"></i>
+            <h3>Перетащите Excel-файл сюда или нажмите для выбора</h3>
+            <p>Поддерживаемые форматы: .xlsx, .xls · Максимум 10 МБ</p>
+          </div>
+
+          <div class="callout info" style="margin-top:15px">
+            <i class="fa-solid fa-circle-info"></i>
+            <div>
+              <strong>Что происходит после загрузки (BRD п. 7):</strong>
+              <ol style="margin:5px 0 0 20px">
+                <li>Проверка формата и структуры файла (BR-10)</li>
+                <li>Извлечение ситуаций и показателей</li>
+                <li>Сопоставление со справочником критичности (актуальная версия)</li>
+                <li>Сохранение результата с привязкой к версии правил</li>
+                <li>Уведомление диспетчера о новом пакете</li>
+              </ol>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== RULES ===== -->
+    <div class="page" id="page-rules">
+      <div class="topbar">
+        <h1><i class="fa-solid fa-scale-balanced" style="color:var(--primary-light)"></i> Справочник критичности</h1>
+        <div class="topbar-actions">
+          <button class="btn btn-primary"><i class="fa-solid fa-plus"></i> Добавить правило</button>
+        </div>
+      </div>
+
+      <div class="callout warning">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <div><strong>Текущая активная версия:</strong> v2.3 от 10.10.2026 · Владелец справочника: Сидоров А.В. (руководитель). Изменение правил влияет только на новые обработки (BRD п. 9.2).</div>
+      </div>
+
+      <div class="section-card">
+        <div class="section-header"><h2><i class="fa-solid fa-list"></i> Действующие правила</h2></div>
+        <div class="section-body">
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr><th>Код</th><th>Показатель / Условие</th><th>Уровень</th><th>Пояснение</th><th>Статус</th></tr>
+              </thead>
+              <tbody>
+                <tr><td><strong>R-001</strong></td><td>Расход = 0 м³/ч более 2 часов</td><td><span class="badge badge-red">🔴 Красный</span></td><td>Остановка счётчика</td><td><span class="badge badge-success">Активно</span></td></tr>
+                <tr><td><strong>R-002</strong></td><td>Давление &lt; 0.20 Па</td><td><span class="badge badge-red">🔴 Красный</span></td><td>Критическое падение давления</td><td><span class="badge badge-success">Активно</span></td></tr>
+                <tr><td><strong>R-003</strong></td><td>Код НС = E101</td><td><span class="badge badge-red">🔴 Красный</span></td><td>Расход ниже нижнего предела</td><td><span class="badge badge-success">Активно</span></td></tr>
+                <tr><td><strong>R-010</strong></td><td>Рост расхода &gt; 100% за час</td><td><span class="badge badge-yellow">🟡 Жёлтый</span></td><td>Резкий скачок потребления</td><td><span class="badge badge-success">Активно</span></td></tr>
+                <tr><td><strong>R-011</strong></td><td>Температура &gt; +25°C</td><td><span class="badge badge-yellow">🟡 Жёлтый</span></td><td>Выход за порог температуры</td><td><span class="badge badge-success">Активно</span></td></tr>
+                <tr><td><strong>R-020</strong></td><td>Код НС = W205</td><td><span class="badge badge-green">🟢 Зелёный</span></td><td>Кратковременное отклонение</td><td><span class="badge badge-success">Активно</span></td></tr>
+                <tr><td><strong>R-021</strong></td><td>Падение расхода на 30-50%</td><td><span class="badge badge-green">🟢 Зелёный</span></td><td>Умеренное снижение</td><td><span class="badge badge-success">Активно</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== AUDIT ===== -->
+    <div class="page" id="page-audit">
+      <div class="topbar">
+        <h1><i class="fa-solid fa-clock-rotate-left" style="color:var(--primary-light)"></i> Журнал действий</h1>
+      </div>
+
+      <div class="callout info">
+        <i class="fa-solid fa-shield-halved"></i>
+        <div><strong>BR-09:</strong> История загрузок, классификаций и действий пользователей доступна уполномоченным сотрудникам. Журнал защищён от изменений.</div>
+      </div>
+
+      <div class="section-card">
+        <div class="section-header"><h2><i class="fa-solid fa-list"></i> Последние действия</h2></div>
+        <div class="section-body">
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr><th>Дата/Время</th><th>Пользователь</th><th>Действие</th><th>Объект</th><th>IP</th></tr>
+              </thead>
+              <tbody>
+                <tr><td>13.10.2026 08:32</td><td>Петров И.С.</td><td><span class="badge badge-primary">Принял в работу</span></td><td>Ситуация #3 (УУГ-0112)</td><td>192.168.1.45</td></tr>
+                <tr><td>13.10.2026 08:14</td><td>Петров И.С.</td><td><span class="badge badge-info">Загрузил пакет</span></td><td>ВНС_2026-10-13_08-00.xlsx</td><td>192.168.1.45</td></tr>
+                <tr><td>13.10.2026 08:14</td><td>Система</td><td><span class="badge badge-success">Обработал пакет</span></td><td>18 ситуаций · версия правил v2.3</td><td>—</td></tr>
+                <tr><td>13.10.2026 08:00</td><td>Петров И.С.</td><td><span class="badge badge-info">Вход в систему</span></td><td>—</td><td>192.168.1.45</td></tr>
+                <tr><td>12.10.2026 20:05</td><td>Сидоров А.В.</td><td><span class="badge badge-info">Загрузил пакет</span></td><td>ВНС_2026-10-12_20-00.xlsx</td><td>192.168.1.12</td></tr>
+                <tr><td>12.10.2026 15:22</td><td>Сидоров А.В.</td><td><span class="badge badge-warning">Изменил правило</span></td><td>R-011: порог +25°C</td><td>192.168.1.12</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ===== SITUATION MODAL ===== -->
+<div class="modal-overlay" id="situationModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2><i class="fa-solid fa-circle-exclamation" style="color:var(--red)"></i> Карточка ситуации</h2>
+      <button class="modal-close" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body">
+      
+      <div style="display:flex;gap:8px;margin-bottom:15px;flex-wrap:wrap">
+        <span class="badge badge-red" style="font-size:.85rem;padding:4px 12px">🔴 Красный</span>
+        <span class="badge badge-info" style="font-size:.85rem;padding:4px 12px">Статус: Новая</span>
+        <span class="badge badge-primary" style="font-size:.85rem;padding:4px 12px">Пакет: ВНС_2026-10-13_08-00.xlsx</span>
+      </div>
+
+      <h3 style="font-size:1rem;margin-bottom:12px;color:var(--primary-dark)">Основные данные</h3>
+      <div class="detail-grid">
+        <div class="detail-item"><div class="label">Счётчик / ID</div><div class="value">УУГ-0891</div></div>
+        <div class="detail-item"><div class="label">Объект / Адрес</div><div class="value">пр. Мира, д. 12, кв. 4</div></div>
+        <div class="detail-item"><div class="label">Собственник</div><div class="value">Иванов И.И.</div></div>
+        <div class="detail-item"><div class="label">Дата и время ситуации</div><div class="value">13.10.2026 06:00</div></div>
+      </div>
+
+      <h3 style="font-size:1rem;margin:15px 0 12px;color:var(--primary-dark)">Показатели</h3>
+      <div class="detail-grid">
+        <div class="detail-item"><div class="label">Расход</div><div class="value red">0.0 м³/ч</div></div>
+        <div class="detail-item"><div class="label">Давление</div><div class="value">0.42 Па</div></div>
+        <div class="detail-item"><div class="label">Температура</div><div class="value">+18°C</div></div>
+        <div class="detail-item"><div class="label">Код НС</div><div class="value">—</div></div>
+      </div>
+
+      <div class="classification-box">
+        <h4><i class="fa-solid fa-scale-balanced"></i> Причина классификации</h4>
+        <p><strong>Применённое правило:</strong> R-001<br>
+        <strong>Условие:</strong> Расход = 0 м³/ч более 2 часов<br>
+        <strong>Факт:</strong> Расход = 0 м³/ч с 04:00 (более 2 часов)<br>
+        <strong>Источник в Excel:</strong> Лист "Данные", строка 47<br>
+        <strong>Версия правил:</strong> v2.3 от 10.10.2026</p>
+      </div>
+
+      <div class="callout warning">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <div><strong>Важно (BRD п. 9.3):</strong> Красный уровень означает порядок внимания диспетчера. Он <strong>не подтверждает</strong> наличие аварии и <strong>не запускает</strong> автоматически отключение газа или выезд бригады.</div>
+      </div>
+
+      <h3 style="font-size:1rem;margin:15px 0 12px;color:var(--primary-dark)">История действий</h3>
+      <div class="timeline">
+        <div class="timeline-item">
+          <div class="time">13.10.2026 08:14 · Система</div>
+          <div class="text">Ситуация импортирована из пакета · присвоен уровень 🔴 Красный</div>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top:15px">
+        <label>Комментарий диспетчера</label>
+        <textarea rows="3" placeholder="Добавьте комментарий при смене статуса..."></textarea>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal()">Отмена</button>
+      <button class="btn btn-secondary" onclick="changeStatus('viewed')"><i class="fa-solid fa-eye"></i> Просмотрено</button>
+      <button class="btn btn-primary" onclick="changeStatus('in_progress')"><i class="fa-solid fa-briefcase"></i> В работу</button>
+      <button class="btn btn-warning" onclick="changeStatus('error')"><i class="fa-solid fa-circle-xmark"></i> Ошибочная</button>
+      <button class="btn btn-success" onclick="changeStatus('closed')"><i class="fa-solid fa-check"></i> Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"><i class="fa-solid fa-circle-check"></i> <span id="toast-text"></span></div>
+
+<script>
+// Navigation
+function showPage(pageId, navItem) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + pageId).classList.add('active');
+  if (navItem) navItem.classList.add('active');
+}
+
+// Modal
+function openSituationModal(id) {
+  document.getElementById('situationModal').classList.add('active');
+}
+function closeModal() {
+  document.getElementById('situationModal').classList.remove('active');
+}
+document.getElementById('situationModal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// Status change
+function changeStatus(status) {
+  const labels = {
+    viewed: 'Отмечено как просмотренное',
+    in_progress: 'Принято в работу',
+    error: 'Отмечено как ошибочное',
+    closed: 'Ситуация закрыта'
+  };
+  closeModal();
+  showToast(labels[status] + ' · Записано в журнал', 'success');
+}
+
+// Upload simulation
+function simulateUpload() {
+  showToast('Файл загружается... Проверка структуры...', 'warning');
+  setTimeout(() => {
+    showToast('Пакет обработан: 18 ситуаций (3 🔴, 5 🟡, 8 🟢, 2 ⚪)', 'success');
+  }, 1500);
+}
+
+// Toast
+function showToast(text, type) {
+  const toast = document.getElementById('toast');
+  const toastText = document.getElementById('toast-text');
+  toast.className = 'toast show ' + (type || '');
+  toastText.textContent = text;
+  setTimeout(() => toast.classList.remove('show'), 3500);
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,1581 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ТЗ | Система анализа и мониторинга газовых счетчиков</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #1e3a8a;
+            --primary-light: #3b82f6;
+            --primary-dark: #1e293b;
+            --accent: #f59e0b;
+            --accent-red: #dc2626;
+            --accent-green: #10b981;
+            --accent-purple: #8b5cf6;
+            --bg: #f8fafc;
+            --bg-card: #ffffff;
+            --text: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --shadow: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.1);
+            --shadow-lg: 0 10px 25px rgba(0,0,0,0.08);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            font-size: 16px;
+        }
+
+        /* Прогресс-бар чтения */
+        .progress-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-light), var(--accent));
+            width: 0%;
+            z-index: 1000;
+            transition: width 0.1s;
+        }
+
+        /* Шапка */
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 60px 40px 80px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -10%;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(245,158,11,0.15) 0%, transparent 70%);
+            border-radius: 50%;
+        }
+
+        .header-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header-badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.15);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 12px;
+            line-height: 1.2;
+        }
+
+        .header p {
+            font-size: 1.15rem;
+            opacity: 0.9;
+            max-width: 800px;
+        }
+
+        .header-meta {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .meta-item i {
+            font-size: 1.2rem;
+            opacity: 0.8;
+        }
+
+        .meta-item span {
+            font-size: 0.95rem;
+        }
+
+        /* Основной контейнер */
+        .container {
+            max-width: 1200px;
+            margin: -40px auto 0;
+            padding: 0 40px 60px;
+            display: grid;
+            grid-template-columns: 260px 1fr;
+            gap: 40px;
+            position: relative;
+            z-index: 2;
+        }
+
+        /* Боковое меню */
+        .sidebar {
+            position: sticky;
+            top: 20px;
+            height: fit-content;
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: var(--shadow);
+            max-height: calc(100vh - 40px);
+            overflow-y: auto;
+        }
+
+        .sidebar h3 {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 15px;
+            padding-left: 10px;
+        }
+
+        .sidebar a {
+            display: block;
+            padding: 10px 12px;
+            color: var(--text);
+            text-decoration: none;
+            border-radius: 6px;
+            font-size: 0.92rem;
+            margin-bottom: 2px;
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+        }
+
+        .sidebar a:hover {
+            background: var(--bg);
+            color: var(--primary);
+        }
+
+        .sidebar a.active {
+            background: #eff6ff;
+            color: var(--primary);
+            border-left-color: var(--primary-light);
+            font-weight: 600;
+        }
+
+        .sidebar a i {
+            margin-right: 8px;
+            width: 16px;
+            text-align: center;
+            opacity: 0.7;
+        }
+
+        /* Контент */
+        .content {
+            min-width: 0;
+        }
+
+        .section {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 35px;
+            margin-bottom: 25px;
+            box-shadow: var(--shadow);
+            scroll-margin-top: 20px;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid var(--bg);
+        }
+
+        .section-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--primary-light), var(--primary));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.3rem;
+            flex-shrink: 0;
+        }
+
+        .section h2 {
+            font-size: 1.5rem;
+            color: var(--primary-dark);
+            font-weight: 700;
+        }
+
+        .section h3 {
+            font-size: 1.15rem;
+            color: var(--primary-dark);
+            margin: 25px 0 12px;
+            font-weight: 600;
+        }
+
+        .section p {
+            margin-bottom: 12px;
+            color: var(--text);
+        }
+
+        /* Карточки статистики */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--primary-light);
+        }
+
+        .stat-card.success::before { background: var(--accent-green); }
+        .stat-card.warning::before { background: var(--accent); }
+        .stat-card.danger::before { background: var(--accent-red); }
+        .stat-card.purple::before { background: var(--accent-purple); }
+
+        .stat-card h4 {
+            font-size: 2rem;
+            color: var(--primary-dark);
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .stat-card p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin: 0;
+        }
+
+        /* Таблицы */
+        .table-wrapper {
+            overflow-x: auto;
+            margin: 15px 0;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.95rem;
+        }
+
+        th {
+            background: var(--primary-dark);
+            color: white;
+            padding: 12px 15px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        tr:last-child td { border-bottom: none; }
+
+        tr:nth-child(even) { background: #f8fafc; }
+
+        tr:hover { background: #eff6ff; }
+
+        /* Бейджи */
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .badge-primary { background: #dbeafe; color: #1e40af; }
+        .badge-success { background: #d1fae5; color: #065f46; }
+        .badge-warning { background: #fef3c7; color: #92400e; }
+        .badge-danger { background: #fee2e2; color: #991b1b; }
+        .badge-purple { background: #ede9fe; color: #5b21b6; }
+        .badge-gray { background: #e2e8f0; color: #475569; }
+
+        /* Архитектурная схема */
+        .architecture {
+            background: linear-gradient(135deg, #f1f5f9 0%, #ffffff 100%);
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 30px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            line-height: 1.8;
+            overflow-x: auto;
+            white-space: pre;
+            color: var(--primary-dark);
+        }
+
+        /* Список требований */
+        .req-list {
+            list-style: none;
+            margin: 15px 0;
+        }
+
+        .req-list li {
+            padding: 12px 15px 12px 45px;
+            background: #f8fafc;
+            border-left: 3px solid var(--primary-light);
+            margin-bottom: 8px;
+            border-radius: 0 6px 6px 0;
+            position: relative;
+        }
+
+        .req-list li::before {
+            content: '✓';
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--accent-green);
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .req-list li strong {
+            color: var(--primary-dark);
+        }
+
+        /* Timeline этапов */
+        .timeline {
+            position: relative;
+            padding-left: 30px;
+            margin: 20px 0;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 10px;
+            top: 10px;
+            bottom: 10px;
+            width: 2px;
+            background: linear-gradient(180deg, var(--primary-light), var(--accent));
+        }
+
+        .timeline-item {
+            position: relative;
+            padding: 15px 20px;
+            background: #f8fafc;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            border-left: 3px solid var(--primary-light);
+        }
+
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -26px;
+            top: 20px;
+            width: 14px;
+            height: 14px;
+            background: white;
+            border: 3px solid var(--primary-light);
+            border-radius: 50%;
+        }
+
+        .timeline-item h4 {
+            color: var(--primary-dark);
+            margin-bottom: 5px;
+            font-size: 1.05rem;
+        }
+
+        .timeline-item .duration {
+            display: inline-block;
+            background: var(--primary-light);
+            color: white;
+            padding: 2px 10px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            margin-bottom: 8px;
+        }
+
+        .timeline-item p {
+            color: var(--text-muted);
+            font-size: 0.92rem;
+            margin: 0;
+        }
+
+        /* Callout блоки */
+        .callout {
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border-left: 4px solid;
+            display: flex;
+            gap: 12px;
+            align-items: flex-start;
+        }
+
+        .callout i {
+            font-size: 1.2rem;
+            margin-top: 2px;
+        }
+
+        .callout.info {
+            background: #eff6ff;
+            border-color: var(--primary-light);
+            color: #1e3a8a;
+        }
+
+        .callout.warning {
+            background: #fef3c7;
+            border-color: var(--accent);
+            color: #78350f;
+        }
+
+        .callout.success {
+            background: #d1fae5;
+            border-color: var(--accent-green);
+            color: #064e3b;
+        }
+
+        .callout.danger {
+            background: #fee2e2;
+            border-color: var(--accent-red);
+            color: #7f1d1d;
+        }
+
+        /* Кнопки */
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin: 20px 0;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+        }
+
+        .btn-secondary:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        /* Риски */
+        .risk-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            display: grid;
+            grid-template-columns: auto 1fr auto;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .risk-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 1.1rem;
+        }
+
+        .risk-high { background: var(--accent-red); }
+        .risk-medium { background: var(--accent); }
+        .risk-low { background: var(--accent-green); }
+
+        .risk-content h5 {
+            color: var(--primary-dark);
+            margin-bottom: 3px;
+            font-size: 0.95rem;
+        }
+
+        .risk-content p {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin: 0;
+        }
+
+        /* Footer */
+        .footer {
+            text-align: center;
+            padding: 30px;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            border-top: 1px solid var(--border);
+            margin-top: 40px;
+        }
+
+        /* Адаптивность */
+        @media (max-width: 1024px) {
+            .container {
+                grid-template-columns: 1fr;
+                padding: 0 20px 40px;
+            }
+            .sidebar {
+                position: static;
+                max-height: none;
+            }
+            .header h1 { font-size: 2rem; }
+            .section { padding: 25px; }
+        }
+
+        @media (max-width: 640px) {
+            .header { padding: 40px 20px 60px; }
+            .header h1 { font-size: 1.5rem; }
+            .header-meta { gap: 15px; }
+            .section { padding: 20px; }
+            .risk-card { grid-template-columns: 1fr; }
+        }
+
+        /* Печать */
+        @media print {
+            .sidebar, .btn-group, .progress-bar { display: none !important; }
+            .container { grid-template-columns: 1fr; margin-top: 0; }
+            .section { box-shadow: none; border: 1px solid #ddd; page-break-inside: avoid; }
+            .header { background: white; color: black; padding: 20px; }
+            body { font-size: 12pt; }
+        }
+    </style>
+</head>
+<body>
+    <div class="progress-bar" id="progressBar"></div>
+
+    <!-- Шапка -->
+    <header class="header">
+        <div class="header-content">
+            <span class="header-badge">
+                <i class="fa-solid fa-file-contract"></i> Техническое задание · Версия 2.0
+            </span>
+            <h1>Система анализа и мониторинга данных газовых счетчиков</h1>
+            <p>Веб-приложение — надстройка над ПО «Акцент.com» для автоматизированного выявления нештатных ситуаций, отклонений от пороговых значений и аномалий в работе узлов учёта газа.</p>
+            
+            <div class="header-meta">
+                <div class="meta-item">
+                    <i class="fa-solid fa-calendar"></i>
+                    <span>13 октября 2026 г.</span>
+                </div>
+                <div class="meta-item">
+                    <i class="fa-solid fa-server"></i>
+                    <span>~400 узлов учёта</span>
+                </div>
+                <div class="meta-item">
+                    <i class="fa-solid fa-clock"></i>
+                    <span>Срок реализации: 3–4 месяца</span>
+                </div>
+                <div class="meta-item">
+                    <i class="fa-solid fa-code-branch"></i>
+                    <span>Статус: Черновик</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Боковое меню -->
+        <aside class="sidebar">
+            <h3>Содержание</h3>
+            <a href="#passport"><i class="fa-solid fa-id-card"></i>1. Паспорт проекта</a>
+            <a href="#goals"><i class="fa-solid fa-bullseye"></i>2. Цели и критерии</a>
+            <a href="#architecture"><i class="fa-solid fa-diagram-project"></i>3. Архитектура</a>
+            <a href="#requirements"><i class="fa-solid fa-list-check"></i>4. Функциональные требования</a>
+            <a href="#non-functional"><i class="fa-solid fa-shield-halved"></i>5. Нефункциональные требования</a>
+            <a href="#tech"><i class="fa-solid fa-microchip"></i>6. Технологии</a>
+            <a href="#stages"><i class="fa-solid fa-stairs"></i>7. Этапы и сроки</a>
+            <a href="#risks"><i class="fa-solid fa-triangle-exclamation"></i>8. Риски</a>
+            <a href="#questions"><i class="fa-solid fa-circle-question"></i>9. Открытые вопросы</a>
+            <a href="#finance"><i class="fa-solid fa-ruble-sign"></i>10. Финансы</a>
+        </aside>
+
+        <!-- Контент -->
+        <main class="content">
+
+            <!-- 1. Паспорт -->
+            <section class="section" id="passport">
+                <div class="section-header">
+                    <div class="section-icon"><i class="fa-solid fa-id-card"></i></div>
+                    <h2>1. Паспорт проекта</h2>
+                </div>
+
+                <div class="table-wrapper">
+                    <table>
+                        <tr><th style="width: 35%;">Параметр</th><th>Значение</th></tr>
+                        <tr><td><strong>Название</strong></td><td>Система анализа и мониторинга данных газовых счетчиков</td></tr>
+                        <tr><td><strong>Пользователи</strong></td><td>Диспетчеры (несколько человек), Руководитель (администратор)</td></tr>
+                        <tr><td><strong>Масштаб</strong></td><td>~400 узлов учёта газа (УУГ)</td></tr>
+                        <tr><td><strong>Источник данных</strong></td><td>Excel-выгрузка или API</td></tr>
+                        <tr><td><strong>Частота обновления</strong></td><td>Раз в сутки</td></tr>
+                     </table>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-circle-info"></i>
+                    <div>
+                        <strong>Ключевое архитектурное решение:</strong> система НЕ взаимодействует напрямую со счётчиками. Она является надстройкой над уже работающим ПО, которое собирает данные с корректоров.
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2. Цели -->
+            <section class="section" id="goals">
+                <div class="section-header">
+                    <div class="section-icon"><i class="fa-solid fa-bullseye"></i></div>
+                    <h2>2. Цели и критерии успеха</h2>
+                </div>
+
+                <h3>Цель проекта</h3>
+                <p>Создать веб-приложение для автоматизированного анализа данных газовых счётчиков, позволяющее диспетчерам быстро выявлять нештатные ситуации и отклонения от нормальных режимов работы.</p>
+
+                <h3>Бизнес-боль заказчика</h3>
+                <div class="callout danger">
+                    <i class="fa-solid fa-exclamation-triangle"></i>
+                    <div>
+                        Организация <strong>пропускает Нештатные ситуации</strong>, после чего потребители требуют возмещения расходов. Система должна исключить человеческий фактор при выявлении таких ситуаций.
+                    </div>
+                </div>
+
+                <h3>Критерии успеха (метрики)</h3>
+                <div class="stats-grid">
+                    <div class="stat-card success">
+                        <h4>≤ 1 мин</h4>
+                        <p>Время от загрузки данных до отображения НС на экране диспетчера</p>
+                    </div>
+                    <div class="stat-card danger">
+                        <h4>0%</h4>
+                        <p>Доля пропущенных критичных нештатных ситуаций</p>
+                    </div>
+                    <div class="stat-card warning">
+                        <h4>−50%</h4>
+                        <p>Снижение трудозатрат диспетчера на анализ данных</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3. Архитектура -->
+            <section class="section" id="architecture">
+                <div class="section-header">
+                    <div class="section-icon"><i class="fa-solid fa-diagram-project"></i></div>
+                    <h2>3. Архитектура системы</h2>
+                </div>
+
+                <div class="architecture">
+┌─────────────────────────────────────────────────────────────────────┐
+│                 Внешняя система                                     │
+│     Сбор данных со счётчиков через корректоры, хранение данных      │
+└────────────────────────────┬────────────────────────────────────────┘
+                             │
+                             │  Excel-выгрузка (или API)
+                             ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│              НАШЕ ВЕБ-ПРИЛОЖЕНИЕ (разрабатываемая система)          │
+│                                                                     │
+│   ┌──────────────┐    ┌──────────────┐    ┌──────────────────┐     │
+│   │   Модуль     │    │   Модуль     │    │   Модуль         │     │
+│   │   загрузки   │───▶│   анализа    │───▶│   визуализации   │     │
+│   │   данных     │    │   и детекции │    │   и уведомлений  │     │
+│   └──────────────┘    └──────────────┘    └──────────────────┘     │
+│          │                    │                     │               │
+│          └────────────────────┴─────────────────────┘               │
+│                             │                                       │
+│                    ┌────────▼────────┐                              │
+│                    │  База данных    │                              │
+│                    │  (PostgreSQL)   │                              │
+│                    └─────────────────┘                              │
+└────────────────────────────┬────────────────────────────────────────┘
+                             │
+                             │  Веб-интерфейс
+                             ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│              Пользователи: диспетчеры, руководитель                 │
+└─────────────────────────────────────────────────────────────────────┘
+                </div>
+
+             </section>
+
+            <!-- 4. Функциональные требования -->
+            <section class="section" id="requirements">
+                <div class="section-header">
+                    <div class="section-icon"><i class="fa-solid fa-list-check"></i></div>
+                    <h2>4. Функциональные требования</h2>
+                </div>
+
+                <h3>4.1. Загрузка данных</h3>
+                <ul class="req-list">
+                    <li><strong>Ручная загрузка Excel:</strong> диспетчер загружает файл через веб-интерфейс.</li>
+                    <li><strong>Автоматическая загрузка (этап 2):</strong> система сама забирает данные по API или из БД.</li>
+                    <li><strong>Парсинг:</strong> извлечение ID счётчика, дата/время, расход, давление, температура, код НС.</li>
+                    <li><strong>Валидация:</strong> проверка корректности (расход не может быть отрицательным и т.п.).</li>
+                    <li><strong>Сохранение:</strong> запись в БД с привязкой к счётчику и времени.</li>
+                </ul>
+
+                <h3>4.2. Хранение данных</h3>
+                <ul class="req-list">
+                    <li><strong>Справочник счётчиков:</strong> ID, адрес, собственник, пороговые значения (давление min/max, температура min/max, расход min/max).</li>
+                    <li><strong>История показаний:</strong> дата/время, расход, давление, температура.</li>
+                    <li><strong>Нештатные ситуации (НС):</strong> дата/время, код НС, описание, приоритет, статус (новая / обработана).</li>
+                    <li><strong>Пользователи:</strong> логин, пароль, роль (диспетчер / админ), список закреплённых объектов.</li>
+                    <li><strong>Логи:</strong> дата/время, пользователь, действие, IP-адрес.</li>
+                </ul>
+
+                <h3>4.3. Анализ и детекция (3 уровня)</h3>
+
+                <div class="callout warning">
+                    <i class="fa-solid fa-layer-group"></i>
+                    <div>
+                        <strong>Этап 1 — НС из кодов «Акцент»:</strong> получаем готовые коды нештатных ситуаций, отображаем на вкладке №1 с приоритетами.
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-layer-group"></i>
+                    <div>
+                        <strong>Этап 2 — Сверка с порогами:</strong> сравниваем полученные данные с индивидуальными пороговыми значениями каждого объекта. Отклонения — на вкладку №2.
+                    </div>
+                </div>
+
+                <div class="callout success">
+                    <i class="fa-solid fa-layer-group"></i>
+                    <div>
+                        <strong>Этап 3 — Продвинутая аналитика:</strong> функция анализа данных за период. Резкие скачки, странные паттерны → на вкладку №3.
+                    </div>
+                </div>
+
+                <h3>Признаки аварийных ситуаций</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <tr><th>Признак</th><th>Описание</th><th>Приоритет</th></tr>
+                        <tr>
+                            <td><strong>Расход = 0</strong></td>
+                            <td>Остановка счётчика — ключевая бизнес-боль</td>
+                            <td><span class="badge badge-danger">Критично</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Резкое изменение расхода</strong></td>
+                            <td>Падение или рост в 2+ раза</td>
+                            <td><span class="badge badge-warning">Высокий</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Падение давления</strong></td>
+                            <td>Например: было 0,4 Па → стало 0,2 Па</td>
+                            <td><span class="badge badge-warning">Высокий</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>Выход за пороги</strong></td>
+                            <td>Давление / температура / расход ниже min или выше max</td>
+                            <td><span class="badge badge-primary">Средний</span></td>
+                        </tr>
+                        <tr>
+                            <td><strong>НС прибора</strong></td>
+                            <td>Расход ниже нижнего или выше верхнего предела измерения</td>
+                            <td><span class="badge badge-purple">Техническое</span></td>
+                        </tr>
+                    </table>
+                </div>
+
+                <h3>4.4. Веб-интерфейс</h3>
+                <ul class="req-list">
+                    <li><strong>Дашборд диспетчера:</strong> список закреплённых объектов, фильтры (статус, адрес, собственник), сортировка (по приоритету, по времени последней НС).</li>
+                    <li><strong>Вкладка «Нештатные ситуации»:</strong> список всех НС с приоритетами (красный / жёлтый / зелёный), возможность отметить как обработанную с комментарием.</li>
+                    <li><strong>Вкладка «Отклонения от порогов»:</strong> объекты, где параметры вышли за пределы.</li>
+                    <li><strong>Страница детального просмотра объекта:</strong> графики расхода / давления / температуры за сутки / неделю / месяц, история показаний, история НС.</li>
+                    <li><strong>Страница загрузки Excel</strong> (для диспетчера).</li>
+                    <li><strong>Страница управления пользователями</strong> (для админа).</li>
+                    <li><strong>Страница просмотра логов</strong> (для админа).</li>
+                </ul>
+
+                <h3>4.5. Авторизация и роли</h3>
+                <div class="table-wrapper">
+                    <table>
+                        <tr><th>Роль</th><th>Права</th></tr>
+                        <tr>
+                            <td><span class="badge badge-primary">Диспетчер</span></td>
+                            <td>Видит только закреплённые объекты; может загружать Excel; отмечать НС как обработанные; просматривать графики и историю.</td>
+                        </tr>
+                        <tr>
+                            <td><span class="badge badge-purple">Админ (руководитель)</span></td>
+                            <td>Видит все объекты и всех диспетчеров; просматривает логи; видит необработанные НС (эскалация).</td>
+                        </tr>
+                    </table>
+                </div>
+
+                <h3>4.6. Уведомления и эскалация (этап 4)</h3>
+                <ul class="req-list">
+                    <li><strong>Уведомления:</strong> новая НС высокого приоритета; критичная аномалия.</li>
+                    <li><strong>Эскалация:</strong> НС не обработана за N часов → повторное уведомление; за M часов → уведомление руководителю.</li>
+                </ul>
+
+                <h3>4.7. Логирование</h3>
+                <ul class="req-list">
+                    <li><strong>Входы в систему:</strong> дата/время, пользователь, IP.</li>
+                    <li><strong>Действия:</strong> загрузка Excel, отметка НС, просмотр объекта, изменение настроек.</li>
+                </ul>
+
+                <div class="callout warning">
+                    <i class="fa-solid fa-user-shield"></i>
+                    <div>
+                        Логи входов — критическое требование MVP. Позволяют установить, <strong>кто и когда был ответственным</strong> за пропущенную НС.
+                    </div>
+                </div>
+            </section>
+
+            <!-- 5. Нефункциональные требования -->
+            <section class="section" id="non-functional">
+                <div class="section-header">
+                    <div class="section-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                    <h2>5. Нефункциональные требования</h2>
+                </div>
+
+                <div class="table-wrapper">
+                    <table>
+                        <tr><th>Требование</th><th>Значение</th></tr>
+                        <tr><td><strong>Производительность</strong></td><td>Загрузка и обработка данных по 400 объектам — не более 1 минуты</td></tr>
+                        <tr><td><strong>Надёжность</strong></td><td>Работа 24/7, резервное копирование БД ежедневно</td></tr>
+                        <tr><td><strong>Безопасность</strong></td><td>HTTPS, хеширование паролей (bcrypt/argon2), разграничение доступа по ролям</td></tr>
+                        <tr><td><strong>Масштабируемость</strong></td><td>Возможность добавления новых счётчиков без остановки системы</td></tr>
+                        <tr><td><strong>Хранение данных</strong></td><td>История показаний — не менее 3 лет</td></tr>
+                        <tr><td><strong>Доступность</strong></td><td>Адаптивный веб-интерфейс (десктоп, планшет)</td></tr>
+                    </table>
+                </div>
+            </section>
+
+            <!-- 6. Технологии -->
+            <section class="section" id="tech">
+                <div class="section-header">
+                    <div class="section-icon"><i class="fa-solid fa-microchip"></i></div>
+                    <h2>6. Рекомендуемый стек технологий</h2>
+                </div>
+
+                <div class="table-wrapper">
+                    <table>
+                        <tr><th>Слой</th><th>Варианты</th></tr>
+                        <tr><td><strong>Backend</strong></td><td>.NET 8 + ASP.NET Core	или Python 3.11 + FastAPI </td></tr>
+                        <tr><td><strong>Frontend</strong></td><td>Vue.js 3 + Vuetify 3	илиBlazor (если всё на .NET)</td></tr>
+                        <tr><td><strong>База данных</strong></td><td>MS SQL Server 2022 или	Та же, что у SFInspector</td></tr>
+                        <tr><td><strong>Парсинг Excel</strong></td><td>ClosedXML / EPPlus или	pandas + openpyxl (Python)</td></tr>
+                     </table>
+                </div>
+            </section>
+
+            <!-- 7. Этапы -->
+            <section class="section" id="stages">
+                <div class="section-header">
+                    <div class="section-icon"><i class="fa-solid fa-stairs"></i></div>
+                    <h2>7. Этапы и сроки</h2>
+                </div>
+
+                <div class="timeline">
+                    <div class="timeline-item">
+                        <span class="duration">1–2 недели</span>
+                        <h4>Этап 0. Раскопки и интеграция</h4>
+                        <p>Получение документации от заказчика, примеров Excel, справочника кодов НС. Сбор пороговых значений по всем 400 объектам. Согласование формата данных.</p>
+                    </div>
+                    <div class="timeline-item">
+                        <span class="duration">3–4 недели</span>
+                        <h4>Этап 1. MVP</h4>
+                        <p>Загрузка Excel → парсинг → БД → веб. Два ЛК (админ / диспетчер). Логи входов. Вывод НС и отклонений от порогов.</p>
+                    </div>
+                    <div class="timeline-item">
+                        <span class="duration">2–3 недели</span>
+                        <h4>Этап 2. Автоматизация загрузки</h4>
+                        <p>Автоматический забор данных по API или через БД. Обработка ошибок и уведомления админу о сбоях.</p>
+                    </div>
+                    <div class="timeline-item">
+                        <span class="duration">3–4 недели</span>
+                        <h4>Этап 3. Продвинутая аналитика</h4>
+                        <p>Детекция аномалий по графикам (скачки, падения, нулевой расход). Визуализация с наложением порогов. Приоритизация.</p>
+                    </div>
+                    <div class="timeline-item">
+                        <span class="duration">2 недели</span>
+                        <h4>Этап 4. Уведомления и эскалация</h4>
+                        <p>Уведомления, эскалация на руководителя при игнорировании НС, журнал обработки.</p>
+                    </div>
+                    <div class="timeline-item">
+                        <span class="duration">2–3 недели</span>
+                        <h4>Этап 5. Пилот и доработки</h4>
+                        <p>Тестирование на группе из 50 объектов. Обучение диспетчеров. Сбор обратной связи. Внесение правок.</p>
+                    </div>
+                    <div class="timeline-item">
+                        <span class="duration">Постоянно</span>
+                        <h4>Этап 6. Промышленная эксплуатация</h4>
+                        <p>Подключение всех 400 объектов. Резервное копирование. Мониторинг доступности. Передача в эксплуатацию.</p>
+                    </div>
+                </div>
+
+                <div class="callout info">
+                    <i class="fa-solid fa-clock"></i>
+                    <div>
+                        <strong>Итого до пилота:</strong> ~13–18 недель (3–4 месяца).
+                    </div>
+                </div>
+            </section>
+
+            <!-- 8. Риски -->
+            <section class="section" id="risks">
+                <div class="section-header">
+                    <div class="section-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                    <h2>8. Риски и меры по их смягчению</h2>
+                </div>
+
+                <div class="risk-card">
+                    <div class="risk-icon risk-high"><i class="fa-solid fa-ban"></i></div>
+                    <div class="risk-content">
+                        <h5>Нет API</h5>
+                        <p>Только ручная загрузка Excel. <strong>Смягчение:</strong> на этапе 2 оставить ручную загрузку с напоминаниями диспетчеру.</p>
+                    </div>
+                    <span class="badge badge-danger">Высокий</span>
+                </div>
+
+                <div class="risk-card">
+                    <div class="risk-icon risk-high"><i class="fa-solid fa-file-excel"></i></div>
+                    <div class="risk-content">
+                        <h5>Непонятная структура Excel</h5>
+                        <p>Невозможно написать парсер. <strong>Смягчение:</strong> на этапе 0 получить пример файла и согласовать структуру колонок.</p>
+                    </div>
+                    <span class="badge badge-danger">Высокий</span>
+                </div>
+
+                <div class="risk-card">
+                    <div class="risk-icon risk-medium"><i class="fa-solid fa-book"></i></div>
+                    <div class="risk-content">
+                        <h5>Нет справочника кодов НС</h5>
+                        <p>Неправильная интерпретация нештатных ситуаций. <strong>Смягчение:</strong> получить документацию.</p>
+                    </div>
+                    <span class="badge badge-warning">Средний</span>
+                </div>
+
+                <div class="risk-card">
+                    <div class="risk-icon risk-medium"><i class="fa-solid fa-database"></i></div>
+                    <div class="risk-content">
+                        <h5>Пороговые значения не оцифрованы</h5>
+                        <p>Невозможна автоматическая сверка. <strong>Смягчение:</strong> собрать данные по всем 400 объектам на этапе 0.</p>
+                    </div>
+                    <span class="badge badge-warning">Средний</span>
+                </div>
+
+                <div class="risk-card">
+                    <div class="risk-icon risk-low"><i class="fa-solid fa-user-xmark"></i></div>
+                    <div class="risk-content">
+                        <h5>Диспетчеры саботируют систему</h5>
+                        <p>НС остаются необработанными. <strong>Смягчение:</strong> эскалация на руководителя, логи действий, отчётность.</p>
+                    </div>
+                    <span class="badge badge-success">Низкий</span>
+                </div>
+            </section>
+
+            <!-- 9. Открытые вопросы -->
+            <section class="section" id="questions">
+                <div class="section-header">
+                    <div class="section-icon"><i class="fa-solid fa-circle-question"></i></div>
+                    <h2>9. Открытые вопросы (требуют уточнения)</h2>
+                </div>
+
+                <h3>🔴 Блокеры — без ответов нельзя начинать</h3>
+                <div class="callout danger">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div>
+                        <strong>1.</strong> Есть ли у стороннего ПО готовое API для автоматической выгрузки данных? Если да — какое (REST / SOAP)? Есть ли документация?
+                    </div>
+                </div>
+                <div class="callout danger">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div>
+                        <strong>2.</strong> Как выглядит структура Excel-файла? Нужен пример хотя бы одной строки (ID, дата/время, расход, давление, температура, код НС).
+                    </div>
+                </div>
+                <div class="callout danger">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div>
+                        <strong>3.</strong> Какие коды нештатных ситуаций (НС) использует ПО? Есть ли справочник кодов?
+                    </div>
+                </div>
+                <div class="callout danger">
+                    <i class="fa-solid fa-circle-exclamation"></i>
+                    <div>
+                        <strong>4.</strong> Где сейчас хранятся пороговые значения (давление, температура, расход) для каждого из 400 объектов? В Excel? В стороннем ПО? В бумажном журнале?
+                    </div>
+                </div>
+
+                <h3>🟡 Важные вопросы</h3>
+                <ul class="req-list">
+                    <li><strong>5.</strong> Как распределены объекты между диспетчерами? Каждый видит все 400 или у каждого своя группа?</li>
+                    <li><strong>6.</strong> Что делать, если диспетчер пропустил НС? Руководитель видит все НС или только необработанные за N часов?</li>
+                    <li><strong>7.</strong> Как диспетчер сейчас работает с НС (звонит / отправляет бригаду / фиксирует в журнале)? Нужно ли формировать заявки на выезд?</li>
+                    <li><strong>8.</strong> Какие графики нужны (расход / давление / температура за сутки / неделю / месяц)? Нужно ли накладывать пороги на график?</li>
+                </ul>
+            </section>
+
+<!-- ===== 10. ФИНАНСОВЫЕ РАСЧЁТЫ ===== -->
+<section class="section" id="finance">
+    <div class="section-header">
+        <div class="section-icon"><i class="fa-solid fa-ruble-sign"></i></div>
+        <h2>10. Финансовые расчёты</h2>
+    </div>
+
+    <div class="callout info">
+        <i class="fa-solid fa-circle-info"></i>
+        <div>
+            <strong>Важно:</strong> Все цифры — ориентировочные, на основе рыночных ставок РФ на октябрь 2026 г. 
+            Окончательная стоимость зависит от: состава команды, лицензионной политики заказчика, наличия инфраструктуры.
+        </div>
+    </div>
+
+    <div class="stats-grid">
+    <div class="stat-card">
+        <h4 style="color:var(--primary)">6.6–8.5</h4>
+        <p>CAPEX · Разработка, млн ₽</p>
+    </div>
+    <div class="stat-card warning">
+        <h4>0.5–3.5</h4>
+        <p>OPEX · Лицензии и инфраструктура, млн ₽</p>
+    </div>
+    <div class="stat-card success">
+        <h4>7.1–12.0</h4>
+        <p>Итого старт, млн ₽</p>
+    </div>
+    <div class="stat-card">
+        <h4 style="color:var(--accent)">3.5–4.5</h4>
+        <p>Месяца до пилота (чуть дольше)</p>
+    </div>
+</div>
+
+    <div class="table-wrapper">
+    <table>
+        <tr>
+            <th>Статья расходов</th>
+            <th>Вариант А: «Эконом»<br><small style="opacity:.7">PostgreSQL + свой сервер</small></th>
+            <th>Вариант Б: «Корпоративный»<br><small style="opacity:.7">MS SQL + лицензии РФ</small></th>
+        </tr>
+        <tr>
+            <td><strong>Разработка (компактная команда)</strong></td>
+            <td>6.6 млн ₽</td>
+            <td>6.6 млн ₽</td>
+        </tr>
+        <tr>
+            <td><strong>Лицензии ОС (Windows Server)</strong></td>
+            <td>0 ₽ (есть у заказчика)</td>
+            <td>150 000 ₽</td>
+        </tr>
+        <tr>
+            <td><strong>Лицензии СУБД</strong></td>
+            <td>0 ₽ (PostgreSQL — Open Source)</td>
+            <td>500 000 ₽ (MS SQL Standard)</td>
+        </tr>
+        <tr>
+            <td><strong>Серверное оборудование</strong></td>
+            <td>400 000 ₽ (свой сервер)</td>
+            <td>400 000 ₽ (свой сервер)</td>
+        </tr>
+        <tr>
+            <td><strong>Резервное оборудование</strong></td>
+            <td>0 ₽ (опционально)</td>
+            <td>400 000 ₽ (резервный сервер)</td>
+        </tr>
+        <tr>
+            <td><strong>Обучение диспетчеров</strong></td>
+            <td>100 000 ₽</td>
+            <td>100 000 ₽</td>
+        </tr>
+        <tr style="background:#eff6ff;font-weight:700">
+            <td>ИТОГО CAPEX + OPEX</td>
+            <td style="color:var(--green)">≈ 7.1 млн ₽</td>
+            <td style="color:var(--primary)">≈ 12.0 млн ₽</td>
+        </tr>
+    </table>
+</div>
+
+    <div class="callout success">
+        <i class="fa-solid fa-lightbulb"></i>
+        <div>
+            <strong>Рекомендация:</strong> если у заказчика уже есть лицензии MS SQL (например, для SFInspector) — 
+            используем их, и вариант Б становится дешевле на 500 тыс. ₽. Уточнить у IT-отдела.
+        </div>
+    </div>
+
+    <h3>10.3. Детализация затрат на команду (оптимизированный вариант)</h3>
+
+<div class="callout info">
+    <i class="fa-solid fa-lightbulb"></i>
+    <div>
+        <strong>Принцип формирования команды:</strong> компактная команда из 4 специалистов, 
+        где каждый закрывает несколько ролей. Это снижает стоимость, но повышает требования 
+        к квалификации каждого участника.
+    </div>
+</div>
+
+<div class="table-wrapper">
+    <table>
+        <tr>
+            <th>Роль</th>
+            <th>Ставка, тыс. ₽/мес</th>
+            <th>Загрузка</th>
+            <th>Длительность</th>
+            <th>Итого, тыс. ₽</th>
+        </tr>
+        <tr>
+            <td>
+                <strong>Руководитель проекта / Системный аналитик</strong><br>
+                <small style="color:var(--muted)">Две роли в одном: ведёт проект + описывает требования</small>
+            </td>
+            <td>300</td>
+            <td>100%</td>
+            <td>3.5 мес</td>
+            <td>1 050</td>
+        </tr>
+        <tr>
+            <td>
+                <strong>Full-stack разработчик (.NET + Vue.js)</strong><br>
+                <small style="color:var(--muted)">Backend + Frontend + базовый DevOps</small>
+            </td>
+            <td>380</td>
+            <td>100%</td>
+            <td>3.5 мес</td>
+            <td>1 330</td>
+        </tr>
+        <tr>
+            <td>
+                <strong>QA-инженер</strong><br>
+                <small style="color:var(--muted)">Тестирование, приёмка, написание автотестов</small>
+            </td>
+            <td>220</td>
+            <td>50%</td>
+            <td>3.5 мес</td>
+            <td>385</td>
+        </tr>
+        <tr>
+            <td>
+                <strong>DevOps / Администратор</strong><br>
+                <small style="color:var(--muted)">Развёртывание, настройка сервера, CI/CD</small>
+            </td>
+            <td>280</td>
+            <td>30%</td>
+            <td>3.5 мес</td>
+            <td>294</td>
+        </tr>
+        <tr>
+            <td>
+                <strong>UX/UI-дизайнер</strong><br>
+                <small style="color:var(--muted)">Только на старте, для прототипа</small>
+            </td>
+            <td>200</td>
+            <td>30%</td>
+            <td>1 мес</td>
+            <td>60</td>
+        </tr>
+        <tr style="background:#eff6ff;font-weight:700">
+            <td colspan="4">ИТОГО ФОТ команды</td>
+            <td>3 119 тыс. ₽</td>
+        </tr>
+        <tr>
+            <td colspan="4">Накладные расходы подрядчика (~20%)</td>
+            <td>624 тыс. ₽</td>
+        </tr>
+        <tr>
+            <td colspan="4">Резерв на риски (~10%)</td>
+            <td>312 тыс. ₽</td>
+        </tr>
+        <tr>
+            <td colspan="4">Проектирование, документация, приёмка (сокращено)</td>
+            <td>2 500 тыс. ₽</td>
+        </tr>
+        <tr style="background:var(--primary);color:#fff;font-weight:700">
+            <td colspan="4">ИТОГО РАЗРАБОТКА</td>
+            <td>≈ 6.6 млн ₽</td>
+        </tr>
+    </table>
+</div>
+
+<div class="callout warning">
+    <i class="fa-solid fa-triangle-exclamation"></i>
+    <div>
+        <strong>Риски компактной команды:</strong>
+        <ul style="margin:8px 0 0 20px">
+            <li><strong>Full-stack разработчик</strong> должен быть действительно сильным специалистом (уровень Senior). Найти такого сложнее, но возможно.</li>
+            <li><strong>РП/СА в одном лице</strong> — двойная нагрузка. Риск: либо проект ведётся в ущерб аналитике, либо наоборот. Рекомендуется чётко распределять время (например, 60% аналитика / 40% управление).</li>
+            <li><strong>Высокая зависимость от каждого</strong> — если один человек заболеет или уволится, проект встанет. Мера: документировать всё, держать знания распределённо.</li>
+            <li><strong>Меньше параллелизма</strong> — задачи выполняются последовательно. Сроки могут увеличиться на 2-4 недели.</li>
+        </ul>
+    </div>
+</div>
+
+<div class="callout success">
+    <i class="fa-solid fa-scale-balanced"></i>
+    <div>
+        <strong>Компенсация рисков:</strong>
+        <ol style="margin:8px 0 0 20px">
+            <li>Использовать готовые решения (Vuetify для UI, готовые шаблоны админок) — экономит 30-40% времени frontend</li>
+            <li>Документацию вести в формате "living docs" (обновляется по ходу проекта), а не писать в конце</li>
+            <li>Приёмку проводить поэтапно (после каждого этапа BRD), а не в конце всего проекта</li>
+            <li>Для UX/UI использовать готовые дизайн-системы (Material Design) вместо кастомной разработки</li>
+        </ol>
+    </div>
+</div>
+
+    <h3>10.4. Стоимость владения (TCO) на 3 года</h3>
+    <div class="table-wrapper">
+    <table>
+        <tr>
+            <th>Статья</th>
+            <th>Год 1</th>
+            <th>Год 2</th>
+            <th>Год 3</th>
+            <th>Итого за 3 года</th>
+        </tr>
+        <tr>
+            <td>Разработка (CAPEX)</td>
+            <td>7.1 млн</td>
+            <td>—</td>
+            <td>—</td>
+            <td>7.1 млн</td>
+        </tr>
+        <tr>
+            <td>Техподдержка (15% от CAPEX)</td>
+            <td>1.07 млн</td>
+            <td>1.07 млн</td>
+            <td>1.07 млн</td>
+            <td>3.2 млн</td>
+        </tr>
+        <tr>
+            <td>Обновления и доработки</td>
+            <td>0.3 млн</td>
+            <td>0.6 млн</td>
+            <td>0.6 млн</td>
+            <td>1.5 млн</td>
+        </tr>
+        <tr>
+            <td>Оборудование (амортизация)</td>
+            <td>0.13 млн</td>
+            <td>0.13 млн</td>
+            <td>0.13 млн</td>
+            <td>0.4 млн</td>
+        </tr>
+        <tr>
+            <td>Электроэнергия, сеть</td>
+            <td>0.05 млн</td>
+            <td>0.05 млн</td>
+            <td>0.05 млн</td>
+            <td>0.15 млн</td>
+        </tr>
+        <tr style="background:#eff6ff;font-weight:700">
+            <td>ИТОГО TCO</td>
+            <td>8.65 млн</td>
+            <td>1.85 млн</td>
+            <td>1.85 млн</td>
+            <td style="color:var(--primary)">12.35 млн ₽</td>
+        </tr>
+    </table>
+</div>
+
+    <h3>10.5. Экономический эффект (ROI)</h3>
+    
+    <h4 style="margin:15px 0 10px;color:var(--primary-dark)">Что экономит система:</h4>
+    <div class="stats-grid">
+        <div class="stat-card success">
+            <h4>−50%</h4>
+            <p>Время диспетчера на анализ данных</p>
+        </div>
+        <div class="stat-card success">
+            <h4>0%</h4>
+            <p>Пропущенных критичных НС (было ~10%)</p>
+        </div>
+        <div class="stat-card success">
+            <h4>×3</h4>
+            <p>Скорость реакции на 🔴 ситуации</p>
+        </div>
+    </div>
+
+    <h4 style="margin:15px 0 10px;color:var(--primary-dark)">Расчёт окупаемости (примерный):</h4>
+    <div class="table-wrapper">
+        <table>
+            <tr>
+                <th>Показатель</th>
+                <th>Значение</th>
+                <th>Обоснование</th>
+            </tr>
+            <tr>
+                <td>Трудозатраты диспетчера (сейчас)</td>
+                <td>~40 мин / день на анализ 400 УУГ</td>
+                <td>Ручной просмотр Excel</td>
+            </tr>
+            <tr>
+                <td>Трудозатраты диспетчера (после)</td>
+                <td>~15 мин / день</td>
+                <td>Работа только с приоритизированным списком</td>
+            </tr>
+            <tr>
+                <td>Экономия времени</td>
+                <td>25 мин / день × 250 раб. дней = <strong>104 часа / год</strong></td>
+                <td>~1 месяц работы диспетчера</td>
+            </tr>
+            <tr>
+                <td>Денежная экономия (ЗП диспетчера)</td>
+                <td>~350 тыс. ₽ / год</td>
+                <td>Из расчёта 80 тыс. ₽/мес «белой» ЗП</td>
+            </tr>
+            <tr>
+                <td>Избежание штрафов / возмещений</td>
+                <td><strong>1.5–3.0 млн ₽ / год</strong></td>
+                <td>По данным заказчика: пропущенные НС → возмещения потребителям</td>
+            </tr>
+            <tr style="background:#d1fae5;font-weight:700">
+                <td>Совокупная экономия</td>
+                <td colspan="2">~1.85–3.35 млн ₽ / год</td>
+            </tr>
+            <tr style="background:var(--primary);color:#fff;font-weight:700">
+    <td>Срок окупаемости (Payback Period)</td>
+    <td colspan="2"><strong>2.1–3.7 года</strong> (по прямой экономии)<br>
+    <small>С учётом избежания репутационных рисков и штрафов — <strong>1.5–2 года</strong></small></td>
+</tr>
+        </table>
+    </div>
+
+    <div class="callout warning">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <div>
+            <strong>Важно:</strong> Основной экономический эффект — <strong>не в экономии ЗП диспетчера</strong>, 
+            а в <strong>избежании финансовых потерь</strong> от пропущенных внештатных ситуаций 
+            (возмещения потребителям, штрафы, репутационные потери). Точную цифру нужно получить от заказчика.
+        </div>
+    </div>
+
+    <h3>10.6. Варианты оптимизации бюджета</h3>
+    <div class="table-wrapper">
+        <table>
+            <tr>
+                <th>Мера</th>
+                <th>Экономия</th>
+                <th>Компромисс</th>
+            </tr>
+            <tr>
+                <td><strong>Использовать PostgreSQL вместо MS SQL</strong></td>
+                <td>500 тыс. ₽</td>
+                <td>Нет лицензий, но нужна экспертиза в PostgreSQL</td>
+            </tr>
+            <tr>
+                <td><strong>Использовать существующий сервер SFInspector</strong></td>
+                <td>400 тыс. ₽</td>
+                <td>Зависимость от инфраструктуры SFInspector</td>
+            </tr>
+            <tr>
+                <td><strong>Отказаться от резервного сервера на старте</strong></td>
+                <td>400 тыс. ₽</td>
+                <td>Риск простоя при аварии оборудования</td>
+            </tr>
+            <tr>
+                <td><strong>Сократить команду (1 разработчик full-stack)</strong></td>
+                <td>1.0–1.5 млн ₽</td>
+                <td>Увеличение сроков на 1–2 месяца</td>
+            </tr>
+            <tr>
+                <td><strong>Отложить этап 3 (продвинутая аналитика)</strong></td>
+                <td>2.0 млн ₽</td>
+                <td>Меньше автоматизации, больше ручной работы диспетчера</td>
+            </tr>
+            <tr>
+                <td><strong>Внутренняя разработка (in-house)</strong></td>
+                <td>20–30%</td>
+                <td>Нужна своя команда, дольше старт</td>
+            </tr>
+        </table>
+    </div>
+
+    <h3>10.7. Финансовые риски</h3>
+    <div class="table-wrapper">
+        <table>
+            <tr>
+                <th>Риск</th>
+                <th>Влияние на бюджет</th>
+                <th>Вероятность</th>
+                <th>Мера</th>
+            </tr>
+            <tr>
+                <td>Изменение формата Excel в процессе проекта</td>
+                <td>+0.5–1.0 млн ₽</td>
+                <td><span class="badge badge-warning">Средняя</span></td>
+                <td>Заложить резерв 15% в этап 1</td>
+            </tr>
+            <tr>
+                <td>Отсутствие API у SFInspector</td>
+                <td>+0.3 млн ₽</td>
+                <td><span class="badge badge-warning">Средняя</span></td>
+                <td>Пилот на файловом обмене</td>
+            </tr>
+            <tr>
+                <td>Дополнительные требования ИБ / ФСТЭК</td>
+                <td>+1.0–2.0 млн ₽</td>
+                <td><span class="badge badge-danger">Высокая</span></td>
+                <td>Привлечь ИБ-специалистов на этапе 0</td>
+            </tr>
+            <tr>
+                <td>Рост объёма данных (>10 000 УУГ)</td>
+                <td>+0.5 млн ₽</td>
+                <td><span class="badge badge-success">Низкая</span></td>
+                <td>Архитектура с запасом масштабируемости</td>
+            </tr>
+            <tr>
+                <td>Задержка согласований с заказчиком</td>
+                <td>+0.3–0.5 млн ₽</td>
+                <td><span class="badge badge-danger">Высокая</span></td>
+                <td>Чёткий регламент согласований, еженедельные статусы</td>
+            </tr>
+        </table>
+    </div>
+
+    <h3>10.8. Рекомендуемая структура финансирования</h3>
+    <div class="callout success">
+        <i class="fa-solid fa-handshake"></i>
+        <div>
+            <strong>Оптимальная модель оплаты:</strong>
+            <ol style="margin:8px 0 0 20px">
+                <li><strong>20%</strong> — аванс при старте проекта (этапы 0–1)</li>
+                <li><strong>30%</strong> — после сдачи MVP (этап 1)</li>
+                <li><strong>30%</strong> — после завершения пилота (этап 5)</li>
+                <li><strong>20%</strong> — после промышленной приёмки</li>
+            </ol>
+            <p style="margin-top:10px">Такая структура защищает обе стороны: заказчик платит за результат, подрядчик получает оборотные средства.</p>
+        </div>
+    </div>
+
+    <div class="callout info" style="margin-top:15px">
+        <i class="fa-solid fa-arrow-right"></i>
+        <div>
+            <strong>Следующий шаг:</strong> Для уточнения бюджета нужно:
+            <ol style="margin:8px 0 0 20px">
+                <li>Получить от заказчика информацию о существующих лицензиях (Windows, MS SQL)</li>
+                <li>Узнать точную сумму возмещений потребителям за пропущенные НС (для ROI)</li>
+                <li>Согласовать требования ИБ (влияют на стоимость инфраструктуры)</li>
+                <li>Определить модель реализации: подрядчик / in-house / гибрид</li>
+            </ol>
+        </div>
+    </div>
+</section>
+            <!-- Кнопки действий -->
+            <div class="btn-group">
+                <button class="btn btn-primary" onclick="window.print()">
+                    <i class="fa-solid fa-print"></i> Печать / Сохранить в PDF
+                </button>
+                <a href="#" class="btn btn-secondary" onclick="window.scrollTo({top:0, behavior:'smooth'}); return false;">
+                    <i class="fa-solid fa-arrow-up"></i> Наверх
+                </a>
+            </div>
+
+        </main>
+    </div>
+
+    <footer class="footer">
+        <p>Техническое задание · Система анализа и мониторинга газовых счётчиков · Версия 2.0 · 13 октября 2026 г.</p>
+        <p style="margin-top: 5px; font-size: 0.85rem;">Документ подготовлен с помощью ИИ-ассистента. Требует согласования с заказчиком.</p>
+    </footer>
+
+    <script>
+        // Прогресс-бар чтения
+        window.addEventListener('scroll', () => {
+            const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+            const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+            const scrolled = (winScroll / height) * 100;
+            document.getElementById('progressBar').style.width = scrolled + '%';
+        });
+
+        // Активный пункт меню при скролле
+        const sections = document.querySelectorAll('.section');
+        const navLinks = document.querySelectorAll('.sidebar a');
+
+        window.addEventListener('scroll', () => {
+            let current = '';
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop;
+                if (pageYOffset >= sectionTop - 100) {
+                    current = section.getAttribute('id');
+                }
+            });
+
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === '#' + current) {
+                    link.classList.add('active');
+                }
+            });
+        });
+
+        // Плавная прокрутка
+        document.querySelectorAll('.sidebar a').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
